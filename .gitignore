@@ -67,3 +67,4 @@ packages/desktop/src-tauri/target/
 .env.production
 .env.*.bak*
 .env.*.backup*
+hackwithai.service
