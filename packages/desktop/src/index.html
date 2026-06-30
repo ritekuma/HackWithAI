@@ -1,123 +1,160 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>HackWithAI v2</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0a0a0a;color:#fafafa;display:flex;align-items:center;justify-content:center;min-height:100vh}
-.loader{text-align:center}
-.spinner{width:40px;height:40px;border:3px solid #333;border-top-color:#10b981;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px}
-@keyframes spin{to{transform:rotate(360deg)}}
-#step{font-family:monospace;font-size:13px;color:#10b981;margin-top:8px}
-</style></head>
-<body>
-<div class="loader" id="loader">
-<div class="spinner"></div>
-<p id="step">Connecting...</p>
-</div>
-<script>
-// ── EVENT COUNTER ──
-var __eventId=0;
-var __eventLog=[];
-function __log(id,tag,detail){
-  var line="[EVENT "+String(id).padStart(3,'0')+"] "+tag+" "+detail;
-  __eventLog.push(line);
-  try{document.title=line.slice(0,60)}catch(x){}
-  var el=document.getElementById("step");
-  if(el)el.textContent=line;
-}
-// Global error capture
-window.onerror=function(m,src,line,col,err){
-  __eventId++;__log(__eventId,"JS-ONERROR",(src||"?")+":"+line+" "+(err&&err.message||m).slice(0,80));
-  return false;
-};
-window.addEventListener("unhandledrejection",function(ev){
-  __eventId++;__log(__eventId,"JS-UNHANDLED",(ev.reason&&ev.reason.message||String(ev.reason)).slice(0,80));
-});
-// Capture resource-level network errors (images, scripts, navigation to blocked ports)
-window.addEventListener("error",function(ev){
-  if(ev instanceof ErrorEvent)return; // JS errors handled by onerror
-  var tag=(ev.target&&ev.target.tagName)||"unknown";
-  var src=(ev.target&&ev.target.src)||(ev.target&&ev.target.href)||"";
-  __eventId++;__log(__eventId,"RESOURCE-ERR",tag+" "+ev.message+" src="+src.slice(0,100));
-},true);
-
-// Intercept console.error to catch WebKit-level errors rendered as console messages
-var __origConsoleError=console.error.bind(console);
-console.error=function(){
-  var args=Array.prototype.slice.call(arguments);
-  try{document.title=("ERR: "+args.map(String).join(" ")).slice(0,60)}catch(x){}
-  __eventId++;__log(__eventId,"CONSOLE-ERR",args.map(String).join(" ").slice(0,120));
-  return __origConsoleError.apply(console,args);
-};
-
-// ── APP CODE ──
-try{
-__eventId++;__log(__eventId,"SCRIPT-START","location="+window.location.href.slice(0,50)+" protocol="+window.location.protocol+" tauriInternals="+(typeof window.__TAURI_INTERNALS__)+" tauri="+(typeof window.__TAURI__));
-
-var APP_URL_PRIMARY="http://localhost:3006";
-var APP_URL_FALLBACK="http://127.0.0.1:3006";
-var APP_URL=APP_URL_PRIMARY;
-var __hwai_navigationCompleted=false;
-
-function navigateViaJS(url){
-  __eventId++;__log(__eventId,"checkAndNavigate-JS-NAV","window.location.replace "+url);
-  try{
-    window.location.replace(url);
-  }catch(e){
-    __eventId++;__log(__eventId,"checkAndNavigate-JS-NAV-ERR",(e.message||String(e)).slice(0,80));
-    try{
-      window.location.href=url;
-    }catch(e2){
-      __eventId++;__log(__eventId,"checkAndNavigate-HREF-ERR",(e2.message||String(e2)).slice(0,80));
-      window.__TAURI_INTERNALS__.invoke("navigate_to_url",{url:url});
-    }
-  }
-}
-
-function checkAndNavigate(){
-  __eventId++;__log(__eventId,"checkAndNavigate-ENTER","navCompleted="+__hwai_navigationCompleted+" protocol="+window.location.protocol);
-
-  if(__hwai_navigationCompleted){
-    __eventId++;__log(__eventId,"checkAndNavigate-SKIP","deep-link already done");
-    return;
-  }
-
-  function tryUrl(targetUrl,fallbackUrl){
-    __eventId++;__log(__eventId,"checkAndNavigate-INVOKE","check_server_connectivity url="+targetUrl);
-    window.__TAURI_INTERNALS__.invoke("check_server_connectivity",{url:targetUrl}).then(function(ok){
-      __eventId++;__log(__eventId,"checkAndNavigate-RESULT","ok="+ok+" url="+targetUrl);
-      if(__hwai_navigationCompleted)return;
-      if(ok){
-        __eventId++;__log(__eventId,"checkAndNavigate-NAVIGATE","navigating to "+targetUrl);
-        navigateViaJS(targetUrl);
-      }else if(fallbackUrl && fallbackUrl!==targetUrl){
-        __eventId++;__log(__eventId,"checkAndNavigate-RETRY","primary failed, trying "+fallbackUrl);
-        tryUrl(fallbackUrl,null);
-      }else{
-        __eventId++;__log(__eventId,"checkAndNavigate-FAIL","server unreachable on "+targetUrl);
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HackWithAI v2</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
-    }).catch(function(e){
-      __eventId++;__log(__eventId,"checkAndNavigate-INVOKE-ERR","invoke error: "+(e.message||String(e)).slice(0,80));
-      if(fallbackUrl && fallbackUrl!==targetUrl){
-        tryUrl(fallbackUrl,null);
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          sans-serif;
+        background: #0a0a0a;
+        color: #fafafa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
       }
-    });
-  }
+      .loader {
+        text-align: center;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #333;
+        border-top-color: #10b981;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 16px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .error-state {
+        display: none;
+      }
+      .error-state.visible {
+        display: block;
+      }
+      .error-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 16px;
+        color: #ef4444;
+      }
+      .error-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .error-message {
+        color: #888;
+        margin-bottom: 24px;
+        font-size: 0.875rem;
+      }
+      .retry-btn {
+        background: #10b981;
+        color: #fff;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .retry-btn:hover {
+        background: #059669;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="loader" id="loader">
+      <div class="spinner"></div>
+      <p id="status-text">Loading HackWithAI v2...</p>
+    </div>
+    <div class="error-state" id="error-state">
+      <svg
+        class="error-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <p class="error-title">Connection Failed</p>
+      <p class="error-message" id="error-message">
+        Unable to connect to HackWithAI v2 servers.
+      </p>
+      <button class="retry-btn" id="retry-btn" onclick="retry()">Retry</button>
+    </div>
+    <script>
+      const APP_URL = "http://localhost:3006";
 
-  try{
-    tryUrl(APP_URL_PRIMARY,APP_URL_FALLBACK);
-  }catch(e){
-    __eventId++;__log(__eventId,"checkAndNavigate-THROW",(e.message||String(e)).slice(0,80));
-  }
-}
+      function showLoader() {
+        document.getElementById("loader").style.display = "block";
+        document.getElementById("error-state").classList.remove("visible");
+      }
 
-__eventId++;__log(__eventId,"SETUP-DONE","scheduling checkAndNavigate in 600ms");
-setTimeout(checkAndNavigate,600);
+      function showError(message) {
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("error-state").classList.add("visible");
+        document.getElementById("error-message").textContent = message;
+      }
 
-}catch(e){
-  __eventId++;__log(__eventId,"SCRIPT-CRASH","top-level error: "+(e.message||String(e)).slice(0,80));
-  document.title="CRASH: "+(e.message||String(e)).slice(0,50);
-}
-</script>
-</body></html>
+      async function checkConnectivity() {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          await fetch(APP_URL, {
+            method: "HEAD",
+            mode: "no-cors",
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          return true;
+        } catch {
+          return false;
+        }
+      }
 
+      async function retry() {
+        showLoader();
+        document.getElementById("status-text").textContent =
+          "Connecting to HackWithAI v2...";
+
+        const isOnline = await checkConnectivity();
+
+        if (isOnline || navigator.onLine) {
+          window.location.href = APP_URL;
+          setTimeout(() => {
+            if (document.visibilityState !== "hidden") {
+              showError(
+                "Unable to connect. Please check your internet connection.",
+              );
+            }
+          }, 3000);
+        } else {
+          showError(
+            "Unable to connect. Please check your internet connection.",
+          );
+        }
+      }
+
+      window.addEventListener("online", retry);
+
+      retry();
+    </script>
+  </body>
+</html>

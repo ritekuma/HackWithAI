@@ -18,23 +18,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU16, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::Manager;
-use tauri::Listener;
 use tauri_plugin_updater::UpdaterExt;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60); // 24 hours
 const DESKTOP_AUTH_STATE_TTL: Duration = Duration::from_secs(5 * 60);
 const MAX_PENDING_DESKTOP_AUTH_STATES: usize = 16;
-
-static EVENT_COUNTER: AtomicU64 = AtomicU64::new(0);
-fn next_event(tag: &str, detail: &str) -> u64 {
-    let id = EVENT_COUNTER.fetch_add(1, Ordering::SeqCst);
-    log::error!("[EVENT {:03}] {} {}", id, tag, detail);
-    id
-}
 
 /// Port for the local dev auth callback server (0 = not started)
 static DEV_AUTH_PORT: AtomicU16 = AtomicU16::new(0);
@@ -74,74 +66,6 @@ fn prune_expired_auth_states(states: &mut HashMap<String, SystemTime>, now: Syst
 #[tauri::command]
 fn get_dev_auth_port() -> u16 {
     DEV_AUTH_PORT.load(Ordering::Relaxed)
-}
-
-#[tauri::command]
-async fn check_server_connectivity(url: String) -> Result<bool, String> {
-    next_event("RUST-check_srv_ENTER", &format!("url={}", url));
-    let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
-        .timeout(std::time::Duration::from_secs(5))
-        .build()
-        .map_err(|e| { next_event("RUST-check_srv-BUILD_ERR", &e.to_string()); format!("{}", e) })?;
-    match client.head(&url).send().await {
-        Ok(resp) => {
-            next_event("RUST-check_srv-OK", &format!("status={}", resp.status()));
-            Ok(resp.status().is_success())
-        }
-        Err(e) => {
-            next_event("RUST-check_srv-FAIL", &e.to_string());
-            Ok(false)
-        }
-    }
-}
-
-#[tauri::command]
-fn navigate_to_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
-    let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
-    log::error!("[WEBVIEW-NATIVE-NAV {}] navigate_to_url url={}", ts, url);
-    next_event("RUST-navigate_url-ENTER", &format!("url={}", url));
-    if let Some(window) = app.get_webview_window("main") {
-        next_event("RUST-navigate_url-WINDOW_OK", "window 'main' found");
-        match url.parse::<url::Url>() {
-            Ok(parsed) => {
-                next_event("RUST-navigate_url-PARSED", &format!("calling window.navigate({})", parsed.as_str()));
-                match window.navigate(parsed) {
-                    Ok(_) => {
-                        next_event("RUST-navigate_url-OK", "navigate returned Ok");
-                        inject_net_monitor(&window);
-                        Ok(())
-                    }
-                    Err(e) => { next_event("RUST-navigate_url-NAV_ERR", &e.to_string()); Err(format!("Navigate failed: {}", e)) }
-                }
-            }
-            Err(e) => { next_event("RUST-navigate_url-PARSE_ERR", &e.to_string()); Err(format!("Invalid URL: {}", e)) }
-        }
-    } else {
-        next_event("RUST-navigate_url-NO_WINDOW", "main window not found");
-        Err("No main window found".to_string())
-    }
-}
-
-fn inject_net_monitor(window: &tauri::WebviewWindow) {
-    let w = window.clone();
-    tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-        match w.eval(include_str!("../net_monitor.js")) {
-            Ok(_) => log::error!("[NET-MON] JS injected"),
-            Err(e) => log::error!("[NET-MON] eval failed: {}", e),
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(6)).await;
-        match w.eval(r#"document.title="HWAI-ERRS:"+JSON.stringify((window.__hwai_errs||[]).slice(-20)).slice(0,180);if(window.__TAURI_INTERNALS__)window.__TAURI_INTERNALS__.invoke("net_log",{msg:"ERRS:"+JSON.stringify(window.__hwai_errs||[])})"#) {
-            Ok(_) => {},
-            Err(e) => log::error!("[NET-MON] err read failed: {}", e),
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        match w.title() {
-            Ok(title) => log::error!("[NET-TITLE] {}", title),
-            Err(e) => log::error!("[NET-TITLE] read failed: {}", e),
-        }
-    });
 }
 
 #[tauri::command]
@@ -1133,25 +1057,16 @@ async fn start_dev_auth_server(app_handle: tauri::AppHandle) {
                 .find(|(k, _)| k == "desktop_state")
                 .map(|(_, v)| v.to_string());
 
-            let ts_dev = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
-            log::error!("[DEV-DL-ENTER {}] path={} origin_raw={:?} state_raw={:?}", ts_dev, path, origin, desktop_state);
-
             match (token, desktop_state) {
                 (Some(ref t), Some(ref state))
                     if is_valid_token_format(t) =>
                 {
                     if !consume_pending_desktop_auth_state(&handle, state) {
-                        log::error!("[DEV-DL-STATE {}] not in pending store — proceeding anyway, server validates", ts_dev);
+                        log::warn!("Dev auth state not in pending store, proceeding via server validation");
                     }
-                    log::error!("[DEV-DL-VALID {}] token={}... state={}...", ts_dev, &t[..8.min(t.len())], &state[..8.min(state.len())]);
-                    let validated_o: Option<String> = origin.clone().filter(|o| validate_origin(o));
-                    log::error!("[DEV-DL-ORIGIN-VALID {}] {:?}", ts_dev, validated_o);
-                    let origin = validated_o
-                        .unwrap_or_else(|| {
-                            log::error!("[DEV-DL-ORIGIN-DEFAULT {}] using http://localhost:3006", ts_dev);
-                            "http://localhost:3006".to_string()
-                        });
-                    log::error!("[DEV-DL-ORIGIN-FINAL {}] {}", ts_dev, origin);
+                    let origin = origin
+                        .filter(|o| validate_origin(o))
+                        .unwrap_or_else(|| "http://localhost:3006".to_string());
 
                     let encoded_token: String =
                         url::form_urlencoded::byte_serialize(t.as_bytes()).collect();
@@ -1161,20 +1076,16 @@ async fn start_dev_auth_server(app_handle: tauri::AppHandle) {
                         "{}/desktop-callback?token={}&desktop_state={}",
                         origin, encoded_token, encoded_state
                     );
-                    log::error!("[DEV-DL-CALLBACK {}] url={}", ts_dev, callback_url);
+
+                    log::info!(
+                        "Dev auth: navigating to callback (token: {}...)",
+                        &t[..8.min(t.len())]
+                    );
 
                     if let Some(window) = handle.get_webview_window("main") {
                         let _ = window.set_focus();
-                        match callback_url.parse::<url::Url>() {
-                            Ok(parsed_url) => {
-                                log::error!("[DEV-DL-NAV {}] scheme={} host={:?} port={:?}",
-                                    ts_dev, parsed_url.scheme(), parsed_url.host_str(), parsed_url.port());
-                                let _ = window.navigate(parsed_url);
-                                inject_net_monitor(&window);
-                            }
-                            Err(e) => {
-                                log::error!("[DEV-DL-PARSE-FAIL {}] {}", ts_dev, e);
-                            }
+                        if let Ok(parsed_url) = callback_url.parse() {
+                            let _ = window.navigate(parsed_url);
                         }
                     }
 
@@ -1257,19 +1168,12 @@ fn validate_origin(origin: &str) -> bool {
         Ok(parsed) => {
             let host = parsed.host_str().unwrap_or("");
             let scheme = parsed.scheme();
-            let port = parsed.port();
             let allowed_hosts = get_allowed_hosts();
             let is_allowed_host = allowed_hosts.iter().any(|allowed| host == allowed);
             let is_valid_scheme = scheme == "https" || (host == "localhost" && scheme == "http");
-            let result = is_allowed_host && is_valid_scheme;
-            log::error!("[VALIDATE-ORIGIN] origin={} host={} scheme={} port={:?} allowed_hosts={:?} is_allowed={} is_valid_scheme={} result={}",
-                origin, host, scheme, port, allowed_hosts, is_allowed_host, is_valid_scheme, result);
-            result
+            is_allowed_host && is_valid_scheme
         }
-        Err(e) => {
-            log::error!("[VALIDATE-ORIGIN] parse error origin={} err={}", origin, e);
-            false
-        }
+        Err(_) => false,
     }
 }
 
@@ -1300,16 +1204,11 @@ fn consume_pending_desktop_auth_state(app: &tauri::AppHandle, desktop_state: &st
 }
 
 fn handle_auth_deep_link(app: &tauri::AppHandle, url: &url::Url) {
-    let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
-    log::error!("[DL-ENTER {}] deep_link_url={}", ts, url.as_str());
-
     if url.scheme() != "hwai" {
-        log::error!("[DL-SKIP {}] scheme={} (not hwai)", ts, url.scheme());
         return;
     }
 
     if url.host_str() == Some("auth") || url.path() == "/auth" || url.path() == "auth" {
-        log::error!("[DL-AUTH {}] matched auth deep link path={} host={:?}", ts, url.path(), url.host_str());
         match url
             .query_pairs()
             .find(|(k, _)| k == "token")
@@ -1317,10 +1216,9 @@ fn handle_auth_deep_link(app: &tauri::AppHandle, url: &url::Url) {
         {
             Some(token) => {
                 if !is_valid_token_format(&token) {
-                    log::error!("[DL-TOKEN {}] invalid format len={}", ts, token.len());
+                    log::error!("Invalid token format in deep link");
                     return;
                 }
-                log::error!("[DL-TOKEN {}] valid token={}...", ts, &token[..8.min(token.len())]);
 
                 let desktop_state = match url
                     .query_pairs()
@@ -1328,36 +1226,28 @@ fn handle_auth_deep_link(app: &tauri::AppHandle, url: &url::Url) {
                     .map(|(_, v)| v.to_string())
                 {
                     Some(state) => {
-                        if consume_pending_desktop_auth_state(app, &state) {
-                            log::error!("[DL-STATE {}] valid state={}...", ts, &state[..8.min(state.len())]);
-                        } else {
-                            log::error!("[DL-STATE {}] not in pending store — proceeding anyway, server validates", ts);
+                        if !consume_pending_desktop_auth_state(app, &state) {
+                            log::warn!("Deep link state not in pending store, proceeding via server validation");
                         }
                         state
                     }
                     None => {
-                        log::error!("[DL-STATE {}] missing from deep link URL", ts);
+                        log::error!("Auth deep link missing desktop_state query param");
                         return;
                     }
                 };
 
                 if let Some(window) = app.get_webview_window("main") {
-                    let raw_origin: Option<String> = url
+                    // Get and validate origin from deep link query params
+                    let origin = url
                         .query_pairs()
                         .find(|(k, _)| k == "origin")
-                        .map(|(_, v)| v.to_string());
-                    log::error!("[DL-ORIGIN-RAW {}] {:?}", ts, raw_origin);
-
-                    let validated_origin: Option<String> = raw_origin
-                        .clone()
-                        .filter(|o| validate_origin(o));
-                    log::error!("[DL-ORIGIN-VALID {}] {:?}", ts, validated_origin);
-
-                    let origin = validated_origin.unwrap_or_else(|| {
-                        log::error!("[DL-ORIGIN-DEFAULT {}] using http://localhost:3006", ts);
-                        "http://localhost:3006".to_string()
-                    });
-                    log::error!("[DL-ORIGIN-FINAL {}] {}", ts, origin);
+                        .map(|(_, v)| v.to_string())
+                        .filter(|o| validate_origin(o))
+                        .unwrap_or_else(|| {
+                            log::warn!("Deep link has missing or invalid origin, using default");
+                            "http://localhost:3006".to_string()
+                        });
 
                     let encoded_token: String =
                         url::form_urlencoded::byte_serialize(token.as_bytes()).collect();
@@ -1367,47 +1257,33 @@ fn handle_auth_deep_link(app: &tauri::AppHandle, url: &url::Url) {
                         "{}/desktop-callback?token={}&desktop_state={}",
                         origin, encoded_token, encoded_state
                     );
-                    log::error!("[DL-CALLBACK {}] constructed url={}", ts, callback_url);
+                    log::info!(
+                        "Navigating to desktop callback (token: {}...)",
+                        &token[..8.min(token.len())]
+                    );
 
-                    match callback_url.parse::<url::Url>() {
+                    match callback_url.parse() {
                         Ok(parsed_url) => {
-                            log::error!("[DL-CALLBACK-PARSED {}] scheme={} host={:?} port={:?} path={}",
-                                ts, parsed_url.scheme(), parsed_url.host_str(), parsed_url.port(), parsed_url.path());
-                            log::error!("[DL-NAVIGATE {}] via window.location.replace -> {}", ts, parsed_url.as_str());
-                            let _ = window.eval("window.__hwai_navigationCompleted=true");
-                            let js_nav = format!(
-                                "window.location.replace({});",
-                                serde_json::to_string(parsed_url.as_str()).unwrap_or_else(|_| "\"\"".to_string())
-                            );
-                            match window.eval(&js_nav) {
-                                Ok(_) => {
-                                    log::error!("[DL-NAV-OK {}] window.location.replace dispatched", ts);
-                                    inject_net_monitor(&window);
-                                }
-                                Err(e) => {
-                                    log::error!("[DL-NAV-FAIL {}] eval failed: {}", ts, e);
-                                    let error_url = format!("{}/login?error=navigation_failed", origin);
-                                    if let Ok(error_parsed) = error_url.parse::<url::Url>() {
-                                        let err_js = format!(
-                                            "window.location.replace({});",
-                                            serde_json::to_string(error_parsed.as_str()).unwrap_or_else(|_| "\"\"".to_string())
-                                        );
-                                        let _ = window.eval(&err_js);
-                                    }
+                            if let Err(e) = window.navigate(parsed_url) {
+                                log::error!("Failed to navigate to callback URL: {}", e);
+                                // Try to navigate to error page
+                                let error_url = format!("{}/login?error=navigation_failed", origin);
+                                if let Ok(error_parsed) = error_url.parse() {
+                                    let _ = window.navigate(error_parsed);
                                 }
                             }
                         }
                         Err(e) => {
-                            log::error!("[DL-PARSE-FAIL {}] {}", ts, e);
+                            log::error!("Invalid callback URL format: {}", e);
                         }
                     }
                 }
             }
             None => {
                 if let Some((_, error)) = url.query_pairs().find(|(k, _)| k == "error") {
-                    log::error!("[DL-ERROR {}] error={}", ts, error);
+                    log::error!("Auth deep link received with error: {}", error);
                 } else {
-                    log::error!("[DL-NO-TOKEN {}]", ts);
+                    log::warn!("Auth deep link received without token: {:?}", url);
                 }
             }
         }
@@ -1593,20 +1469,11 @@ async fn execute_pty_kill(_session_id: String) -> Result<(), String> {
     Err("PTY sessions are not available on Android.".to_string())
 }
 
-#[tauri::command]
-fn net_log(msg: String) {
-    log::error!("[NET-JS] {}", msg);
-}
-
 #[cfg(not(target_os = "android"))]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    log::error!("[LIFECYCLE] run() ENTRY");
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            check_server_connectivity,
-            navigate_to_url,
-            net_log,
             get_dev_auth_port,
             prepare_desktop_auth_state,
             get_cmd_server_info,
@@ -1627,32 +1494,9 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(
-            tauri::plugin::Builder::<tauri::Wry>::new("nav-monitor")
-                .on_navigation(|webview, url| {
-                    let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
-                    let scheme = url.scheme().to_string();
-                    let host = url.host_str().map(|s| s.to_string()).unwrap_or_default();
-                    let port = url.port();
-                    let path = url.path().to_string();
-                    log::error!("[NAV-MON {}] on_navigation scheme={} host={} port={:?} path={} url={}",
-                        ts, scheme, host, port, path, url.as_str());
-                    true
-                })
-                .on_page_load(|webview, payload| {
-                    let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
-                    let url = payload.url().to_string();
-                    log::error!("[PAGE-LOAD {}] url={}", ts, url);
-                    // Re-inject network monitor after every page load
-                    match webview.eval(r#"document.title="JS-LOADED-"+Date.now();if(!window.__hwaiNetMonitor){(function(){window.__hwaiNetMonitor=1;var t=window.__TAURI_INTERNALS__?"TAURI-YES":"TAURI-NO";document.title=t;var o=[];var origF=window.fetch;window.fetch=function(u,op){var s=typeof u==='string'?u:String(u.url||u);try{var p=new URL(s,''+window.location);o.push("F:"+p.port+":"+p.hostname+":"+(op&&op.method||"G")+":"+p.pathname.slice(0,20))}catch(e){}return origF.apply(this,arguments)};var origX=window.XMLHttpRequest;window.XMLHttpRequest=function(){var x=new origX(),m='',u='';var oo=x.open;x.open=function(a,b){m=a;u=String(b);return oo.apply(this,arguments)};x.addEventListener('load',function(){try{var p=new URL(u,''+window.location);o.push("X:"+p.port+":"+p.hostname)}catch(e){}});x.addEventListener('error',function(){o.push("XE:"+u.slice(0,20))});return x};window.__hwai_ops=o;window.__hwai_ops_ts=Date.now()}})();}"#) {
-                        Ok(_) => log::error!("[PAGE-LOAD-EVAL] OK"),
-                        Err(e) => log::error!("[PAGE-LOAD-EVAL] FAIL: {}", e),
-                    }
-                })
-                .build(),
-        )
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-            log::error!("[LIFECYCLE] single_instance callback ENTRY args_count={}", args.len());
+            // Handle deep links passed as CLI args (Linux/Windows)
+            log::info!("Single instance callback with args: {:?}", args);
             for arg in args.iter().skip(1) {
                 if let Ok(url) = url::Url::parse(arg) {
                     if url.scheme() == "hwai" {
@@ -1675,7 +1519,6 @@ pub fn run() {
             HashMap::new(),
         )))
         .setup(|app| {
-            log::error!("[LIFECYCLE] setup() ENTRY");
             #[cfg(desktop)]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
@@ -1694,7 +1537,6 @@ pub fn run() {
                 let handle = app.handle().clone();
                 app.deep_link().on_open_url(move |event| {
                     let urls = event.urls();
-                    log::error!("[LIFECYCLE] deep_link on_open_url FIRED urls={:?}", urls);
                     log::info!("Deep link received: {:?}", urls);
 
                     for url in urls {
@@ -1731,111 +1573,13 @@ pub fn run() {
                 }
             });
 
-            log::error!("[LIFECYCLE] setup() COMPLETE — window should exist now");
             log::info!("HackWithAI v2 Desktop initialized");
-
-            // ── WEBVIEW NAVIGATION DIAGNOSTICS ──
-            if let Some(window) = app.get_webview_window("main") {
-                log::error!("[LIFECYCLE] window 'main' EXISTS after setup");
-
-                let _ = window.listen("tauri://webview-created", |_| {
-                    log::error!("[WEBVIEW] webview-created EVENT fired");
-                });
-
-                // Inject JS to capture every network request, resource load, and error
-                let _ = window.eval(r#"
-(function(){
-var ts=Date.now();
-function log(tag, detail){
-    var line="[WEBVIEW-JS "+tag+" "+ts+"] "+detail.replace(/\n/g,' ').slice(0,140);
-    try{document.title=line.slice(0,60)}catch(x){}
-    console.error(line);
-}
-// --- Intercept fetch() ---
-var origFetch=window.fetch;
-window.fetch=function(url, opts){
-    var u=typeof url==='string'?url:(url&&url.url||String(url));
-    var m=(opts&&opts.method)||'GET';
-    log('FETCH-START', m+' '+u);
-    try{var pu=new URL(u,''+window.location);log('FETCH-PORT', 'port='+pu.port+' host='+pu.hostname+' proto='+pu.protocol)}catch(e){}
-    return origFetch.apply(this,arguments).then(function(r){
-        log('FETCH-DONE', m+' '+u+' status='+r.status);
-        return r;
-    }).catch(function(e){
-        log('FETCH-ERR', m+' '+u+' err='+(e.message||String(e)).slice(0,80));
-        throw e;
-    });
-};
-// --- Intercept XMLHttpRequest ---
-var OrigXHR=window.XMLHttpRequest;
-window.XMLHttpRequest=function(){
-    var xhr=new OrigXHR();
-    var origOpen=xhr.open;
-    var _method='',_url='';
-    xhr.open=function(m,u){_method=m;_url=u;return origOpen.apply(this,arguments);};
-    xhr.addEventListener('loadend',function(){
-        log('XHR-END', _method+' '+_url+' status='+xhr.status);
-        try{var pu=new URL(_url,''+window.location);log('XHR-PORT', 'port='+pu.port+' host='+pu.hostname)}catch(e){}
-    });
-    xhr.addEventListener('error',function(){
-        log('XHR-ERR', _method+' '+_url+' network error');
-    });
-    return xhr;
-};
-// --- Intercept WebSocket ---
-var OrigWS=window.WebSocket;
-window.WebSocket=function(url, protocols){
-    log('WS-NEW', 'WebSocket to: '+url);
-    try{var pu=new URL(url,''+window.location);log('WS-PORT', 'port='+pu.port+' host='+pu.hostname+' proto='+pu.protocol)}catch(e){}
-    var ws=new OrigWS(url, protocols);
-    ws.addEventListener('error',function(e){log('WS-ERR', 'WebSocket error on '+url)});
-    ws.addEventListener('close',function(e){log('WS-CLOSE', 'WebSocket closed code='+e.code)});
-    return ws;
-};
-// --- Capture resource errors (img, script, link, iframe) ---
-window.addEventListener('error',function(ev){
-    if(ev instanceof ErrorEvent)return;
-    var tag=(ev.target&&ev.target.tagName)||'unknown';
-    var src=(ev.target&&ev.target.src)||(ev.target&&ev.target.href)||'';
-    log('RES-ERR', tag+' '+ev.type+(src?' src='+src:''));
-    try{var pu=new URL(src,''+window.location);log('RES-ERR-PORT', 'port='+pu.port+' host='+pu.hostname)}catch(e){}
-},true);
-// --- Capture Performance API ---
-try{
-    var obs=new PerformanceObserver(function(list){
-        var entries=list.getEntries();
-        for(var i=0;i<entries.length;i++){
-            var e=entries[i];
-            if(e.initiatorType&&e.name){
-                log('PERF', e.initiatorType+' '+e.name+(e.duration?(' '+Math.round(e.duration)+'ms'):''));
-            }
-        }
-    });
-    obs.observe({type:'resource',buffered:true});
-    obs.observe({type:'navigation',buffered:true});
-}catch(e){}
-// --- Intercept console.error ---
-var _origError=console.error.bind(console);
-console.error=function(){
-    var args=Array.prototype.slice.call(arguments);
-    _origError.apply(console,args);
-};
-log('JS-INJECTED', 'network monitor active location='+window.location.href);
-})();
-"#);
-            } else {
-                log::error!("[LIFECYCLE] window 'main' NOT FOUND after setup");
-            }
-            // ── END WEBVIEW DIAGNOSTICS ──
-
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
-            log::error!("[LIFECYCLE] run_event fired");
             if let tauri::RunEvent::Exit = event {
-                log::error!("[LIFECYCLE] RunEvent::Exit");
                 if let Some(pty_state) = app.try_state::<PtyState>() {
                     if let Ok(mut manager) = pty_state.lock() {
                         manager.stop_all();
