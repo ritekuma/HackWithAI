@@ -180,9 +180,10 @@ export async function GET(request: Request) {
     : "/";
   const response = NextResponse.redirect(new URL(redirectPath, request.url));
 
+  const isSecure = new URL(request.url).protocol === "https:";
   response.cookies.set("wos-session", sessionData.sealedSession, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecure,
     sameSite: "lax",
     path: "/",
     maxAge: getCookieMaxAge(),
