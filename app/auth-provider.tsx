@@ -53,6 +53,24 @@ class MockConvexClient {
 
   async mutation(_mutation: unknown, args?: Record<string, unknown>) {
     if (!args) return {};
+    // Desktop sandbox bridge: return valid Centrifugo config from env vars
+    if ("connectionName" in args && "osInfo" in args && !("id" in args) && !("chatId" in args)) {
+      const wsUrl = typeof process !== "undefined" && process.env?.CENTRIFUGO_WS_URL || "ws://127.0.0.1:8000/connection/websocket";
+      const connectionId = "desktop-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+      const centrifugoToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJsb2NhbC1kZXYtdXNlciIsImV4cCI6OTk5OTk5OTk5OX0.mock_signature";
+      return { connectionId, centrifugoToken, centrifugoWsUrl: wsUrl };
+    }
+    // Desktop sandbox bridge: refresh token or disconnect
+    if ("connectionId" in args && Object.keys(args).length === 1 && !("id" in args) && !("chatId" in args) && !("connectionName" in args) && !("fileId" in args)) {
+      // Try to match mutation name to distinguish refresh from disconnect
+      const mutName = String((_mutation as any)?.name || (_mutation as any)?._name || "");
+      if (mutName.toLowerCase().includes("disconnect")) {
+        return { success: true };
+      }
+      // Default: treat as refresh
+      const centrifugoToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJsb2NhbC1kZXYtdXNlciIsImV4cCI6OTk5OTk5OTk5OX0.mock_refresh";
+      return { ok: true, centrifugoToken };
+    }
     if ("fileId" in args && typeof args.fileId === "string" && args.fileId.startsWith("local-") &&
         !("id" in args) && !("chatId" in args)) {
       fetch("/api/local-file/upload", {
