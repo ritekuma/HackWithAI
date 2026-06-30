@@ -53,12 +53,23 @@ class MockConvexClient {
 
   async mutation(_mutation: unknown, args?: Record<string, unknown>) {
     if (!args) return {};
-    // Desktop sandbox bridge: return valid Centrifugo config from env vars
+    // Desktop sandbox bridge: return valid Centrifugo config with real JWT
     if ("connectionName" in args && "osInfo" in args && !("id" in args) && !("chatId" in args)) {
-      const wsUrl = typeof process !== "undefined" && process.env?.CENTRIFUGO_WS_URL || "ws://127.0.0.1:8000/connection/websocket";
+      const wsUrl = "ws://127.0.0.1:8000/connection/websocket";
       const connectionId = "desktop-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
-      const centrifugoToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJsb2NhbC1kZXYtdXNlciIsImV4cCI6OTk5OTk5OTk5OX0.mock_signature";
-      return { connectionId, centrifugoToken, centrifugoWsUrl: wsUrl };
+      try {
+        const res = await fetch("/api/sandbox/desktop-connect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ connectionName: args.connectionName, osInfo: args.osInfo }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return { connectionId: data.connectionId || connectionId, centrifugoToken: data.centrifugoToken, centrifugoWsUrl: wsUrl };
+        }
+      } catch {}
+      // Fallback: return config that will attempt connection (JWT may be rejected by Centrifugo)
+      return { connectionId, centrifugoToken: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXNrdG9wLXVzZXIiLCJleHAiOjk5OTk5OTk5OTl9.fallback", centrifugoWsUrl: wsUrl };
     }
     // Desktop sandbox bridge: refresh token or disconnect
     if ("connectionId" in args && Object.keys(args).length === 1 && !("id" in args) && !("chatId" in args) && !("connectionName" in args) && !("fileId" in args)) {
