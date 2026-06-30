@@ -28,10 +28,7 @@ function escapeHtml(str: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const ts = Date.now();
   const url = new URL(request.url);
-  console.error(`[AUTH-CB ${ts}] /api/auth/desktop-callback ENTER code=${url.searchParams.get("code")?.slice(0,10)} state=${url.searchParams.get("state")?.slice(0,16)}`);
-
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
   const state = url.searchParams.get("state");
@@ -176,12 +173,10 @@ export async function GET(request: NextRequest) {
     }
 
     const origin = getPublicOrigin(request.url);
-    console.error(`[AUTH-CB ${ts}] origin=${origin} devCallbackPort=${stateMetadata?.devCallbackPort}`);
 
     // In dev mode, redirect to local HTTP server instead of deep link
     if (stateMetadata?.devCallbackPort) {
       const devCallbackUrl = `http://localhost:${stateMetadata.devCallbackPort}/auth-callback?token=${encodeURIComponent(transferToken)}&origin=${encodeURIComponent(origin)}&desktop_state=${encodeURIComponent(stateMetadata.desktopAuthState)}`;
-      console.error(`[AUTH-CB ${ts}] DEV-CALLBACK-URL=${devCallbackUrl}`);
       return new Response(renderSuccessPage(devCallbackUrl), {
         status: 200,
         headers: noStoreHeaders,
@@ -189,7 +184,6 @@ export async function GET(request: NextRequest) {
     }
 
     const deepLinkUrl = `hwai://auth?token=${encodeURIComponent(transferToken)}&origin=${encodeURIComponent(origin)}&desktop_state=${encodeURIComponent(stateMetadata.desktopAuthState)}`;
-    console.error(`[AUTH-CB ${ts}] DEEPLINK-FULL=${deepLinkUrl}`);
     return new Response(renderSuccessPage(deepLinkUrl), {
       status: 200,
       headers: noStoreHeaders,

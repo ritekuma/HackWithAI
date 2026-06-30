@@ -84,6 +84,8 @@ export default function RootLayout({
 }>) {
   const isLocal = isLocalOnlyMode();
 
+  // In local-only mode, wrap with mock providers so the app works without
+  // WorkOS and Convex backends.
   let content = (
     <GlobalStateProvider>
       <DataStreamProvider>
