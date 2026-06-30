@@ -54,8 +54,8 @@ console.error=function(){
 try{
 __eventId++;__log(__eventId,"SCRIPT-START","location="+window.location.href.slice(0,50)+" protocol="+window.location.protocol+" tauriInternals="+(typeof window.__TAURI_INTERNALS__)+" tauri="+(typeof window.__TAURI__));
 
-var APP_URL_PRIMARY="http://127.0.0.1:3006";
-var APP_URL_FALLBACK="http://localhost:3006";
+var APP_URL_PRIMARY="http://localhost:3006";
+var APP_URL_FALLBACK="http://127.0.0.1:3006";
 var APP_URL=APP_URL_PRIMARY;
 var __hwai_navigationCompleted=false;
 
