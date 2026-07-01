@@ -100,7 +100,7 @@ export class DesktopWorkerMCPServer implements MCPServer {
   }
 
   async listTools(): Promise<MCPToolDefinition[]> {
-    return this.bridgeAvailable ? TOOLS : [];
+    return TOOLS;
   }
 
   async callTool(call: MCPToolCall): Promise<MCPToolResult> {

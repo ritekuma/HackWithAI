@@ -103,7 +103,7 @@ export class PlaywrightMCPServer implements MCPServer {
   }
 
   async listTools(): Promise<MCPToolDefinition[]> {
-    return this.available ? TOOLS : [];
+    return TOOLS;
   }
 
   async callTool(call: MCPToolCall): Promise<MCPToolResult> {
