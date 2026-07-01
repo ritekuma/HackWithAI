@@ -68,3 +68,5 @@ packages/desktop/src-tauri/target/
 .env.*.bak*
 .env.*.backup*
 hackwithai.service
+mcp/__pycache__/
+mcp/__pycache__/
