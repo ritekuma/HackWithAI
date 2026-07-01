@@ -15,6 +15,7 @@ import { getPolicy, isAllowed, requiresApproval, type ExecutionPolicy, type Poli
 import { routeModel, estimateCost, type RoutingContext, type RouteDecision } from "../router";
 import { executeWithRecovery, type RecoveryResult } from "../recovery";
 import { ObservabilityCollector, type AgentMetrics, type TaskMetrics, type ObservabilitySnapshot } from "../observability";
+import { getMemory } from "@/lib/memory";
 
 const TEAM_NAMES = TEAMS.map((t) => t.id);
 
@@ -51,6 +52,11 @@ export class OrchestrationEngine {
 
     this.tasks.set(task.id, task);
     this.activeTaskId = task.id;
+
+    // Phase 0: Retrieve context from memory
+    const memory = getMemory();
+    let retrievalContext;
+    try { retrievalContext = await memory.beforeTask(task); } catch {}
 
     try {
       // Phase 1: Plan — break into steps
@@ -176,6 +182,10 @@ export class OrchestrationEngine {
     task.completedAt = Date.now();
     this.taskHistory.push(task);
     this.activeTaskId = null;
+
+    // Store experiences in memory after completion
+    try { await memory.afterTask(task); } catch {}
+
     return task;
   }
 
