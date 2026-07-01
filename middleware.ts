@@ -30,6 +30,10 @@ const UNAUTHENTICATED_PATHS = new Set([
   "/privacy-policy",
   "/terms-of-service",
   "/download",
+  "/api/runtime/health",
+  "/api/mcp/health",
+  "/api/sandbox/desktop-connect",
+  "/api/playwright-proxy",
   "/manifest.json",
 ]);
 

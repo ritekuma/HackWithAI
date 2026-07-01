@@ -12,6 +12,7 @@ import { createOpenAIProvider } from "./providers/openai";
 import { createAnthropicProvider } from "./providers/anthropic";
 import { createGeminiProvider } from "./providers/gemini";
 import { createOllamaProvider } from "./providers/ollama";
+import { registerMCPTools } from "@/lib/mcp/tools/integration";
 
 let _runtime: RuntimeManager | null = null;
 
@@ -69,6 +70,9 @@ function bootstrapRuntime(): RuntimeManager {
       createOllamaProvider(),
     );
   }
+
+  // ── Register MCP tools into runtime ──
+  registerMCPTools(tools);
 
   // ── Register default models ──
   registerDefaultModels(models);
