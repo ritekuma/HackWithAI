@@ -36,7 +36,11 @@ if ba.launch():
 else:
   print(json.dumps({'error': 'browser launch failed'}))
 "`, { timeout: 30000 });
-    return NextResponse.json(JSON.parse(stdout));
+    try {
+      return NextResponse.json(JSON.parse(stdout.trim() || '{}'));
+    } catch {
+      return NextResponse.json({ result: stdout.trim(), raw: true });
+    }
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
