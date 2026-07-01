@@ -38,6 +38,8 @@ const UNAUTHENTICATED_PATHS = new Set([
   "/api/memory/health",
   "/api/memory/stats",
   "/api/memory/search",
+  "/api/missions",
+  "/api/missions/metrics",
   "/api/memory/redis-set",
   "/api/memory/redis-get",
   "/api/memory/redis-delete",
