@@ -1,6 +1,6 @@
 "use client";
 
-import { Brain, Check, ChevronDown, ChevronRight, Lock } from "lucide-react";
+import { Brain, Check, ChevronDown, ChevronRight } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import type { ChatMode, SelectedModel } from "@/types/chat";
 import { isAgentMode } from "@/lib/utils/mode-helpers";
@@ -47,9 +47,6 @@ import {
   dismissProMaxUsageNotice,
   isProMaxUsageNoticeDismissed,
 } from "@/lib/utils/pro-max-notice-cookie";
-import {
-  hasStoredModelAccess,
-} from "@/lib/model-access";
 
 // ── Shared sub-components ──────────────────────────────────────────
 
@@ -140,9 +137,7 @@ const ModelOptionButton = ({
           )}
         </div>
       </div>
-      {isFreeUser ? (
-        <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
-      ) : isSelected ? (
+      {isSelected ? (
         <Check className="h-3.5 w-3.5 shrink-0" />
       ) : null}
     </button>
@@ -181,28 +176,22 @@ const ModelOptionList = ({
   value,
   isAuto,
   isFreeUser,
-  hasModelAccess,
   mode,
   onAutoSelect,
   onSelect,
   onClose,
-  onAccessGranted,
   mobile = false,
 }: {
   options: ModelOption[];
   value: string;
   isAuto: boolean;
   isFreeUser: boolean;
-  hasModelAccess: boolean;
   mode: ChatMode;
   onAutoSelect: () => void;
   onSelect: (option: ModelOption) => void;
   onClose: () => void;
-  onAccessGranted: () => void;
   mobile?: boolean;
 }) => {
-  const isModelLocked = isFreeUser && !hasModelAccess;
-
   return (
     <div className="flex flex-col gap-px">
         <AutoOptionButton
@@ -214,62 +203,18 @@ const ModelOptionList = ({
 
       {options.map((option) => {
         const isSelected = value === option.id;
-        const showUpgradeTooltip = isModelLocked && !mobile;
-
-        if (!showUpgradeTooltip) {
-          return (
-            <div key={option.id}>
-              <ModelOptionButton
-                option={option}
-                isSelected={isSelected}
-                isFreeUser={isModelLocked}
-                onSelect={onSelect}
-                mode={mode}
-                mobile={mobile}
-              />
-            </div>
-          );
-        }
 
         return (
-          <Tooltip key={option.id}>
-            <TooltipTrigger asChild>
-              <div>
-                <ModelOptionButton
-                  option={option}
-                  isSelected={isSelected}
-                  isFreeUser={isModelLocked}
-                  onSelect={onSelect}
-                  mode={mode}
-                  mobile={mobile}
-                />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent
-              side="right"
-              sideOffset={12}
-              align="start"
-              className="bg-popover text-popover-foreground border border-border shadow-lg rounded-xl px-4 py-3 max-w-[240px] space-y-1.5 [&_svg]:!hidden"
-            >
-              {option.description ? (
-                <p className="text-sm font-semibold text-foreground leading-snug">
-                  {option.description}
-                </p>
-              ) : (
-                <p className="text-sm font-semibold text-foreground leading-snug">
-                  {option.label}
-                </p>
-              )}
-              {option.poweredBy && (
-                <p className="text-xs text-muted-foreground">
-                  Powered by {option.poweredBy}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground leading-relaxed pt-1">
-                Locked model.
-              </p>
-            </TooltipContent>
-          </Tooltip>
+          <div key={option.id}>
+            <ModelOptionButton
+              option={option}
+              isSelected={isSelected}
+              isFreeUser={false}
+              onSelect={onSelect}
+              mode={mode}
+              mobile={mobile}
+            />
+          </div>
         );
       })}
     </div>
@@ -282,13 +227,12 @@ export function ModelSelector({ value, onChange, mode }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [pendingProMaxNotice, setPendingProMaxNotice] =
     useState<ModelOption | null>(null);
-  const [hasModelAccess, setHasModelAccess] = useState(false);
   const { subscription } = useGlobalState();
   const isMobile = useIsMobile();
 
   const isAuto = value === "auto";
+
   const isFreeUser = subscription === "free";
-  const isModelLocked = isFreeUser && !hasModelAccess;
   /** Base Pro tier: Max is flagged as unusually heavy usage vs higher plans. */
   const isBaseProTier = subscription === "pro";
 
@@ -307,10 +251,6 @@ export function ModelSelector({ value, onChange, mode }: ModelSelectorProps) {
         ? "Auto"
         : selected.label;
 
-  useEffect(() => {
-    setHasModelAccess(hasStoredModelAccess());
-  }, []);
-
   const handleAutoSelect = () => {
     onChange("auto");
     setOpen(false);
@@ -322,11 +262,6 @@ export function ModelSelector({ value, onChange, mode }: ModelSelectorProps) {
   };
 
   const handleModelSelect = (option: ModelOption) => {
-    if (isModelLocked) {
-      setOpen(false);
-      return;
-    }
-
     if (
       isBaseProTier &&
       option.id === "hwai-max" &&
@@ -412,12 +347,10 @@ export function ModelSelector({ value, onChange, mode }: ModelSelectorProps) {
               value={value}
               isAuto={isAuto}
               isFreeUser={isFreeUser}
-              hasModelAccess={hasModelAccess}
               mode={mode}
               onAutoSelect={handleAutoSelect}
               onSelect={handleModelSelect}
               onClose={() => setOpen(false)}
-              onAccessGranted={() => setHasModelAccess(true)}
               mobile
             />
           </SheetContent>
@@ -437,12 +370,10 @@ export function ModelSelector({ value, onChange, mode }: ModelSelectorProps) {
             value={value}
             isAuto={isAuto}
             isFreeUser={isFreeUser}
-            hasModelAccess={hasModelAccess}
             mode={mode}
             onAutoSelect={handleAutoSelect}
             onSelect={handleModelSelect}
             onClose={() => setOpen(false)}
-            onAccessGranted={() => setHasModelAccess(true)}
           />
         </PopoverContent>
       </Popover>
