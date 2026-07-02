@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useRef } from "react";
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components";
 import { ConvexProviderWithAuth } from "convex/react";
 import {
@@ -189,7 +189,11 @@ function useLocalAuthFallback() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const client = new MockConvexClient() as any;
+  const clientRef = useRef<MockConvexClient | null>(null);
+  if (!clientRef.current) {
+    clientRef.current = new MockConvexClient();
+  }
+  const client = clientRef.current as any;
 
   return (
     <AuthKitProvider>
