@@ -31,6 +31,13 @@ export const ASK_MODEL_OPTIONS: ModelOption[] = [
     description: "Maximum intelligence for complex work",
     poweredBy: "Claude Opus 4.6",
   },
+  {
+    id: "hwai-enterprise",
+    label: "HackWithAI v2 Enterprise",
+    description:
+      "Enterprise-grade AI for advanced coding, architecture, offensive security, autonomous agents, and large-scale software engineering",
+    poweredBy: "Hermes 405B + Qwen Coder 32B",
+  },
 ];
 
 export const AGENT_MODEL_OPTIONS: ModelOption[] = [
@@ -53,6 +60,14 @@ export const AGENT_MODEL_OPTIONS: ModelOption[] = [
     label: "HackWithAI v2 Max",
     description: "Maximum intelligence for complex work",
     poweredBy: "Claude Opus 4.6",
+    thinking: true,
+  },
+  {
+    id: "hwai-enterprise",
+    label: "HackWithAI v2 Enterprise",
+    description:
+      "Enterprise-grade AI for advanced coding, architecture, offensive security, autonomous agents, and large-scale software engineering",
+    poweredBy: "Hermes 405B + Qwen Coder 32B",
     thinking: true,
   },
 ];

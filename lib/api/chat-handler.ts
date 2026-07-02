@@ -49,7 +49,7 @@ export function createChatHandler() {
 
       const mode: ChatMode = body.mode === "agent" ? "agent" : "ask";
       const selectedModel: SelectedModel =
-        body.model && ["auto", "hwai-standard", "hwai-pro", "hwai-max"].includes(body.model)
+        body.model && ["auto", "hwai-standard", "hwai-pro", "hwai-max", "hwai-enterprise"].includes(body.model)
           ? body.model
           : "auto";
 

@@ -19,6 +19,8 @@ export function getCostTier(modelId: string, mode?: ChatMode): CostTier {
       return "high";
     case "hwai-max":
       return "very-high";
+    case "hwai-enterprise":
+      return "high";
     default:
       return "medium";
   }

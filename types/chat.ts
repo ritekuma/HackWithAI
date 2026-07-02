@@ -15,13 +15,15 @@ export type SelectedModel =
   | "auto"
   | "hwai-standard"
   | "hwai-pro"
-  | "hwai-max";
+  | "hwai-max"
+  | "hwai-enterprise";
 
 export const SELECTABLE_MODELS: readonly SelectedModel[] = [
   "auto",
   "hwai-standard",
   "hwai-pro",
   "hwai-max",
+  "hwai-enterprise",
 ];
 
 /**

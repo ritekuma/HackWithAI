@@ -81,6 +81,11 @@ export function selectModel(
     return askUsesDeepSeek ? "model-deepseek-v4-flash" : "model-gemini-3-flash";
   }
 
+  // Enterprise is mode-aware: agent → Hermes 405B, ask → Qwen Coder 32B
+  if (selectedModel === "hwai-enterprise" && !isAgent) {
+    return "model-enterprise-coding";
+  }
+
   const providerKey = resolveTierToProviderKey(selectedModel, mode);
   return providerKey ?? autoModel;
 }

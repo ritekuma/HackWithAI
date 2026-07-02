@@ -303,6 +303,8 @@ const buildOpenRouterMap = (or: OpenRouterInstance) => ({
   "fallback-grok-4.3": or("x-ai/grok-4.3"),
   "title-generator-model": or("deepseek/deepseek-v4-flash"),
   "final-review-model": or("google/gemini-2.5-flash"),
+  "model-enterprise-planning": or("nousresearch/hermes-3-llama-3.1-405b"),
+  "model-enterprise-coding": or("qwen/qwen-2.5-coder-32b-instruct"),
 });
 
 const buildOpenAIMap = () => ({
@@ -322,6 +324,8 @@ const buildOpenAIMap = () => ({
   "fallback-grok-4.3": openai("gpt-4o"),
   "title-generator-model": openai("gpt-4o-mini"),
   "final-review-model": openai("gpt-4o"),
+  "model-enterprise-planning": openai("gpt-4o"),
+  "model-enterprise-coding": openai("gpt-4o"),
 });
 
 const buildGoogleMap = () => ({
@@ -341,6 +345,8 @@ const buildGoogleMap = () => ({
   "fallback-grok-4.3": google("gemini-2.5-pro-preview-05-06"),
   "title-generator-model": google("gemini-2.5-flash-preview-05-20"),
   "final-review-model": google("gemini-2.5-pro-preview-05-06"),
+  "model-enterprise-planning": google("gemini-2.5-pro-preview-05-06"),
+  "model-enterprise-coding": google("gemini-2.5-flash-preview-05-20"),
 });
 
 const buildAnthropicMap = () => ({
@@ -360,6 +366,8 @@ const buildAnthropicMap = () => ({
   "fallback-grok-4.3": anthropic("claude-opus-4-20250514"),
   "title-generator-model": anthropic("claude-sonnet-4-20250514"),
   "final-review-model": anthropic("claude-sonnet-4-20250514"),
+  "model-enterprise-planning": anthropic("claude-sonnet-4-20250514"),
+  "model-enterprise-coding": anthropic("claude-sonnet-4-20250514"),
 });
 
 const buildOllamaMap = () => {
@@ -380,6 +388,8 @@ const buildOllamaMap = () => {
     "fallback-grok-4.3": ollama("qwen2.5-coder"),
     "title-generator-model": ollama("qwen2.5-coder"),
     "final-review-model": ollama("qwen2.5-coder"),
+    "model-enterprise-planning": ollama("qwen2.5-coder"),
+    "model-enterprise-coding": ollama("qwen2.5-coder"),
     // Local-specific aliases
     "ollama-qwen": ollama("qwen2.5-coder"),
     "ollama-deepseek": ollama("deepseek-coder:6.7b"),
@@ -428,6 +438,8 @@ export const modelCutoffDates: Record<ModelName, string> &
   "fallback-grok-4.3": "December 2025",
   "title-generator-model": "January 2025",
   "final-review-model": "May 2025",
+  "model-enterprise-planning": "January 2025",
+  "model-enterprise-coding": "January 2025",
   "ollama-qwen": "May 2025",
   "ollama-deepseek": "May 2025",
   "ollama-mistral": "May 2025",
@@ -459,6 +471,8 @@ export const modelDisplayNames: Record<ModelName, string> &
     "Auto, an intelligent model router built by HackWithAI v2",
   "title-generator-model": "Google Gemini 3 Flash",
   "final-review-model": "Claude Sonnet 4 — Final Review & Audit",
+  "model-enterprise-planning": "Hermes 3 405B — Enterprise Planning & Architecture",
+  "model-enterprise-coding": "Qwen 2.5 Coder 32B — Enterprise Coding & Automation",
   "ollama-qwen": "Ollama - Qwen 2.5 Coder (Local)",
   "ollama-deepseek": "Ollama - DeepSeek Coder 6.7B (Local)",
   "ollama-mistral": "Ollama - Mistral (Local)",
@@ -534,6 +548,8 @@ export function resolveTierToProviderKey(
       return "model-sonnet-4.6";
     case "hwai-max":
       return "model-opus-4.6";
+    case "hwai-enterprise":
+      return isAgentMode(mode) ? "model-enterprise-planning" : "model-enterprise-coding";
   }
 }
 
