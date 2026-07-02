@@ -12,6 +12,12 @@ import {
 } from "@/lib/utils/client-storage";
 
 class MockConvexClient {
+  private updateCallbacks: Array<() => void> = [];
+
+  private notifyAll() {
+    for (const cb of this.updateCallbacks) cb();
+  }
+
   setAuth(_fetchToken: unknown, onChange: (value: boolean) => void) {
     onChange(true);
   }
@@ -29,7 +35,12 @@ class MockConvexClient {
         }
         return undefined;
       },
-      onUpdate: () => () => {},
+      onUpdate: (cb: () => void) => {
+        this.updateCallbacks.push(cb);
+        return () => {
+          this.updateCallbacks = this.updateCallbacks.filter((c) => c !== cb);
+        };
+      },
     };
     return watch;
   }
@@ -44,7 +55,12 @@ class MockConvexClient {
         const chats = getStoredChats();
         return { page: chats, isDone: true, continueCursor: "" };
       },
-      onUpdate: () => () => {},
+      onUpdate: (cb: () => void) => {
+        this.updateCallbacks.push(cb);
+        return () => {
+          this.updateCallbacks = this.updateCallbacks.filter((c) => c !== cb);
+        };
+      },
       loadMore: () => {},
       pageSize: 28,
     };
@@ -108,6 +124,7 @@ class MockConvexClient {
         update_time: Date.now(),
         user_id: args.userId as string | undefined,
       });
+      this.notifyAll();
     }
     if ("chatId" in args && "role" in args && "parts" in args) {
       appendStoredMessage(args.chatId as string, {
@@ -123,10 +140,12 @@ class MockConvexClient {
         finish_reason: args.finish_reason as string | undefined,
         usage: args.usage,
       });
+      this.notifyAll();
     }
     if ("chatId" in args && typeof args.chatId === "string" &&
         !("role" in args) && !("title" in args) && !("id" in args)) {
       deleteStoredChat(args.chatId as string);
+      this.notifyAll();
     }
     return {};
   }
