@@ -541,6 +541,16 @@ export function appendStoredMessage(chatId: string, message: StoredMessage): voi
   }
   syncSetMessages(chatId, messages);
   apiAppendMessage(chatId, message);
+  // Auto-create chat entry if it doesn't exist (needed for sidebar)
+  const chats = getStoredChatsSync();
+  if (!chats.find((c) => c.id === chatId)) {
+    upsertStoredChat({
+      _id: chatId,
+      id: chatId,
+      title: "New Chat",
+      update_time: Date.now(),
+    });
+  }
 }
 
 export function deleteStoredChat(chatId: string): void {
