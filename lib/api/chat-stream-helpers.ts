@@ -463,22 +463,22 @@ export class SummarizationTracker {
 const MODEL_FALLBACK_CHAIN: Partial<Record<ModelName, readonly ModelName[]>> = {
   "ask-model-free": ["fallback-ask-model"],
   "agent-model-free": ["fallback-agent-model"],
-  "model-deepseek-v4-flash": ["fallback-ask-model"],
-  "ask-model": ["fallback-grok-4.3"],
-  "agent-model": ["fallback-grok-4.3"],
-  "model-gemini-3-flash": ["fallback-grok-4.3"],
-  "model-kimi-k2.6": ["fallback-grok-4.3"],
+  "model-hwai-standard": ["fallback-ask-model"],
+  "ask-model": ["fallback-ask-model"],
+  "agent-model": ["fallback-agent-model"],
+  "model-hwai-pro-core": ["fallback-ask-model"],
+  "model-hwai-pro-code": ["fallback-agent-model"],
 };
 
 const ANTHROPIC_FALLBACK_CHAIN_BY_MODE: Record<ChatMode, readonly ModelName[]> =
   {
-    agent: ["model-kimi-k2.6", "fallback-grok-4.3"],
-    ask: ["model-gemini-3-flash"],
+    agent: ["model-hwai-pro-code", "fallback-agent-model"],
+    ask: ["model-hwai-pro-core"],
   };
 
 const ANTHROPIC_MULTIMODAL_AGENT_FALLBACK_CHAIN = [
-  "fallback-gemini-3.5-flash",
-  "fallback-grok-4.3",
+  "model-vision",
+  "fallback-ask-model",
 ] as const satisfies readonly ModelName[];
 
 type FallbackOptions = {
@@ -491,7 +491,7 @@ const getFallbackKeys = (
   options: FallbackOptions = {},
 ): readonly ModelName[] | undefined => {
   if (!modelName) return undefined;
-  if (modelName === "model-opus-4.6" || modelName === "model-sonnet-4.6") {
+  if (modelName === "model-hwai-max" || modelName === "model-hwai-pro-code" || modelName === "model-hwai-pro-review") {
     if (mode === "agent" && options.hasMultimodalToolResults) {
       return ANTHROPIC_MULTIMODAL_AGENT_FALLBACK_CHAIN;
     }
@@ -508,9 +508,9 @@ export function getRetryFallbackModel(
     return mode === "agent" ? "fallback-agent-model" : "fallback-ask-model";
   }
   if (isGeminiModel(modelName)) {
-    return "fallback-grok-4.3";
+    return mode === "agent" ? "model-vision-fallback" : "fallback-ask-model";
   }
-  return "fallback-grok-4.3";
+  return "fallback-ask-model";
 }
 
 const resolveSlug = (modelName: string): string | undefined => {

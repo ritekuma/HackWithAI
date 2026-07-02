@@ -53,37 +53,34 @@ export function selectModel(
     return subscription === "free" ? "ask-model-free" : "ask-model";
   }
   const isAgent = isAgentMode(mode);
-  // ASK takes the cheap DeepSeek text path for free users (always) and for
-  // paid users only when no image/PDF is attached — DeepSeek is text-only,
-  // so we promote to Gemini 3 Flash when vision/document parts are present.
-  const askUsesDeepSeek =
-    !isAgent && (subscription === "free" || !hasImageOrPdf);
+  const hasVision = !!hasImageOrPdf;
 
   const autoModel: ModelName = isAgent
     ? subscription === "free"
       ? "agent-model-free"
       : "agent-model"
-    : askUsesDeepSeek
-      ? "ask-model-free"
+    : hasVision
+      ? "model-vision"
       : "ask-model";
 
-  // Free users always route through the auto router; paid users may pick a
-  // tier explicitly. The tier id is mode-aware via resolveTierToProviderKey.
+  // Free users always route through the auto router
   if (!selectedModel || selectedModel === "auto" || subscription === "free") {
     return autoModel;
   }
 
-  // Paid ASK Standard mirrors the auto-route split, but uses the explicit
-  // `model-deepseek-v4-flash` / `model-gemini-3-flash` keys so any UI that
-  // reads `getModelDisplayName` shows the picked model rather than the
-  // auto-router label.
-  if (selectedModel === "hwai-standard" && !isAgent) {
-    return askUsesDeepSeek ? "model-deepseek-v4-flash" : "model-gemini-3-flash";
+  // Standard: DeepSeek V4 Pro for text, Gemini Flash for vision
+  if (selectedModel === "hwai-standard") {
+    return hasVision ? "model-hwai-standard-vision" : "model-hwai-standard";
   }
 
-  // Enterprise is mode-aware: agent → Hermes 405B, ask → Qwen Coder 32B
+  // Pro: mode-aware — coding/architecture/review → Claude, core → DeepSeek
+  if (selectedModel === "hwai-pro" && !isAgent) {
+    return hasVision ? "model-vision" : "model-hwai-pro-core";
+  }
+
+  // Enterprise: mode-aware — agent → Hermes, ask → Qwen Coder
   if (selectedModel === "hwai-enterprise" && !isAgent) {
-    return "model-enterprise-coding";
+    return hasVision ? "model-vision" : "model-enterprise-coding";
   }
 
   const providerKey = resolveTierToProviderKey(selectedModel, mode);

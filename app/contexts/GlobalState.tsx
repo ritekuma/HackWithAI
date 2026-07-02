@@ -129,8 +129,8 @@ interface GlobalStateType {
   defaultLocalSandboxPreference: SandboxPreference | null;
 
   // Model selection
-  selectedModel: SelectedModel;
-  setSelectedModel: (model: SelectedModel) => void;
+  selectedModel: string;
+  setSelectedModel: (model: string) => void;
 
   // Utility methods
   clearInput: () => void;
@@ -379,7 +379,7 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
 
   // Model selection — HackWithAI v2 tier ids (Lite/Pro/Max) are mode-agnostic;
   // the active model is resolved server-side via resolveTierToProviderKey.
-  const [selectedModel, setSelectedModelRaw] = useState<SelectedModel>(() => {
+  const [selectedModel, setSelectedModelRaw] = useState<string>(() => {
     const saved = readSelectedModel();
     return saved ?? "auto";
   });
@@ -389,7 +389,7 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     writeSelectedModel(selectedModel);
   }, [selectedModel]);
 
-  const setSelectedModelState = useCallback((model: SelectedModel) => {
+  const setSelectedModelState = useCallback((model: string) => {
     setSelectedModelRaw(model);
   }, []);
 

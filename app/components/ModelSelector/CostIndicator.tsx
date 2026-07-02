@@ -14,9 +14,9 @@ type CostTier = "low" | "medium" | "high" | "very-high";
 export function getCostTier(modelId: string, mode?: ChatMode): CostTier {
   switch (modelId) {
     case "hwai-standard":
-      return mode && isAgentMode(mode) ? "medium" : "low";
+      return "low";
     case "hwai-pro":
-      return "high";
+      return "medium";
     case "hwai-max":
       return "very-high";
     case "hwai-enterprise":

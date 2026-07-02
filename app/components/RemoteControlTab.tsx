@@ -22,7 +22,6 @@ import { useGlobalState } from "@/app/contexts/GlobalState";
 import type {
   ChatMode,
   SandboxPreference,
-  SelectedModel,
   SubscriptionTier,
 } from "@/types/chat";
 
@@ -93,8 +92,8 @@ interface UseAutoSelectNewRemoteConnectionArgs {
   subscription: SubscriptionTier;
   sandboxPreference: SandboxPreference;
   setSandboxPreference: (preference: SandboxPreference) => void;
-  selectedModel: SelectedModel;
-  setSelectedModel: (model: SelectedModel) => void;
+  selectedModel: string;
+  setSelectedModel: (model: string) => void;
   temporaryChatsEnabled: boolean;
 }
 

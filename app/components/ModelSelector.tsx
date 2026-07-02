@@ -54,8 +54,8 @@ import {
 // ── Shared sub-components ──────────────────────────────────────────
 
 interface ModelSelectorProps {
-  value: SelectedModel;
-  onChange: (model: SelectedModel) => void;
+  value: string;
+  onChange: (model: string) => void;
   mode: ChatMode;
 }
 
@@ -190,7 +190,7 @@ const ModelOptionList = ({
   mobile = false,
 }: {
   options: ModelOption[];
-  value: SelectedModel;
+  value: string;
   isAuto: boolean;
   isFreeUser: boolean;
   hasModelAccess: boolean;

@@ -16,7 +16,7 @@ interface ChatRequestBody {
   id?: string;
   chatId?: string;
   messages: UIMessage[];
-  model?: SelectedModel;
+  model?: string;
   mode?: ChatMode;
   data?: Record<string, unknown>;
 }
@@ -48,13 +48,16 @@ export function createChatHandler() {
       }
 
       const mode: ChatMode = body.mode === "agent" ? "agent" : "ask";
-      const selectedModel: SelectedModel =
-        body.model && ["auto", "hwai-standard", "hwai-pro", "hwai-max", "hwai-enterprise"].includes(body.model)
-          ? body.model
-          : "auto";
+      const KNOWN_TIERS = ["auto", "hwai-standard", "hwai-pro", "hwai-max", "hwai-enterprise"];
+      const selectedModel = body.model && KNOWN_TIERS.includes(body.model)
+        ? (body.model as SelectedModel)
+        : ("auto" as SelectedModel);
+      const isManualModel = body.model && !KNOWN_TIERS.includes(body.model);
 
       const modelName = resolveModelName(mode, selectedModel);
-      const model = myProvider.languageModel(modelName);
+      const model = isManualModel
+        ? myProvider.languageModel(body.model!)
+        : myProvider.languageModel(modelName);
 
       const updatedMessages = messages.map((m, idx) => {
         if (idx === 0 && m.role === "user" && m.parts) {

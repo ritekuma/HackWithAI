@@ -101,7 +101,7 @@ export const hasAuthenticatedBefore = (): boolean => {
  * Both kinds are rewritten to the unified key in their new form so the
  * migration is a one-shot.
  */
-export const readSelectedModel = (): SelectedModel | null => {
+export const readSelectedModel = (): string | null => {
   if (!isBrowser()) return null;
   try {
     const raw = window.localStorage.getItem(SELECTED_MODEL_STORAGE_KEY);
@@ -134,7 +134,7 @@ export const readSelectedModel = (): SelectedModel | null => {
 };
 
 /** Save the model preference (shared across ask + agent modes). */
-export const writeSelectedModel = (model: SelectedModel): void => {
+export const writeSelectedModel = (model: string): void => {
   if (!isBrowser()) return;
   try {
     window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, model);

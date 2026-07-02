@@ -287,24 +287,40 @@ type OpenRouterInstance = typeof openrouter;
 // Model Maps per Provider
 // ============================================================================
 const buildOpenRouterMap = (or: OpenRouterInstance) => ({
-  "ask-model": or("qwen/qwen-2.5-coder-32b-instruct"),
-  "ask-model-free": or("qwen/qwen-2.5-coder-32b-instruct"),
+  // ── Auto-router models ──
+  "ask-model": or("deepseek/deepseek-chat"),
+  "ask-model-free": or("deepseek/deepseek-v4-pro"),
   "agent-model": or("nousresearch/hermes-3-llama-3.1-405b"),
-  "agent-model-free": or("nousresearch/hermes-3-llama-3.1-405b"),
-  "model-sonnet-4.6": or("deepseek/deepseek-chat"),
-  "model-gpt-4.5": or("deepseek/deepseek-chat"),
-  "model-gemini-3-flash": or("google/gemini-2.5-flash"),
-  "model-deepseek-v4-flash": or("deepseek/deepseek-v4-flash"),
-  "model-opus-4.6": or("deepseek/deepseek-chat"),
-  "model-kimi-k2.6": or("moonshotai/kimi-k2.6:exacto"),
-  "fallback-agent-model": or("deepseek/deepseek-v4-flash"),
-  "fallback-ask-model": or("deepseek/deepseek-v4-flash"),
-  "fallback-gemini-3.5-flash": or("google/gemini-2.5-flash"),
-  "fallback-grok-4.3": or("x-ai/grok-4.3"),
-  "title-generator-model": or("deepseek/deepseek-v4-flash"),
-  "final-review-model": or("google/gemini-2.5-flash"),
+  "agent-model-free": or("deepseek/deepseek-v4-pro"),
+
+  // ── HackWithAI Standard (DeepSeek V4 Pro + Gemini Flash vision) ──
+  "model-hwai-standard": or("deepseek/deepseek-v4-pro"),
+  "model-hwai-standard-vision": or("google/gemini-2.5-flash"),
+
+  // ── HackWithAI Pro (DeepSeek Chat core + Claude Sonnet 4.6 coding/architecture/review) ──
+  "model-hwai-pro-core": or("deepseek/deepseek-chat"),
+  "model-hwai-pro-code": or("anthropic/claude-sonnet-4.6"),
+  "model-hwai-pro-review": or("anthropic/claude-sonnet-4.6"),
+
+  // ── HackWithAI Max (Claude Opus 4.6) ──
+  "model-hwai-max": or("anthropic/claude-opus-4.6"),
+
+  // ── HackWithAI Enterprise (Hermes 405B + Qwen Coder 32B) ──
   "model-enterprise-planning": or("nousresearch/hermes-3-llama-3.1-405b"),
   "model-enterprise-coding": or("qwen/qwen-2.5-coder-32b-instruct"),
+
+  // ── Vision ──
+  "model-vision": or("google/gemini-2.5-flash"),
+  "model-vision-fallback": or("x-ai/grok-4"),
+
+  // ── Free / helper models ──
+  "model-helper": or("deepseek/deepseek-v4-flash"),
+  "title-generator-model": or("deepseek/deepseek-v4-flash"),
+
+  // ── Fallbacks ──
+  "fallback-agent-model": or("deepseek/deepseek-v4-pro"),
+  "fallback-ask-model": or("deepseek/deepseek-v4-pro"),
+  "final-review-model": or("anthropic/claude-sonnet-4.6"),
 });
 
 const buildOpenAIMap = () => ({
@@ -312,20 +328,21 @@ const buildOpenAIMap = () => ({
   "ask-model-free": openai("gpt-4o-mini"),
   "agent-model": openai("gpt-4.5-preview"),
   "agent-model-free": openai("gpt-4o-mini"),
-  "model-sonnet-4.6": openai("gpt-4o"),
-  "model-gpt-4.5": openai("gpt-4.5-preview"),
-  "model-gemini-3-flash": openai("gpt-4o-mini"),
-  "model-deepseek-v4-flash": openai("gpt-4o-mini"),
-  "model-opus-4.6": openai("gpt-4o"),
-  "model-kimi-k2.6": openai("gpt-4o-mini"),
+  "model-hwai-standard": openai("gpt-4o-mini"),
+  "model-hwai-standard-vision": openai("gpt-4o"),
+  "model-hwai-pro-core": openai("gpt-4o"),
+  "model-hwai-pro-code": openai("gpt-4.5-preview"),
+  "model-hwai-pro-review": openai("gpt-4.5-preview"),
+  "model-hwai-max": openai("gpt-4.5-preview"),
+  "model-enterprise-planning": openai("gpt-4.5-preview"),
+  "model-enterprise-coding": openai("gpt-4o"),
+  "model-vision": openai("gpt-4o"),
+  "model-vision-fallback": openai("gpt-4o"),
+  "model-helper": openai("gpt-4o-mini"),
+  "title-generator-model": openai("gpt-4o-mini"),
   "fallback-agent-model": openai("gpt-4o"),
   "fallback-ask-model": openai("gpt-4o"),
-  "fallback-gemini-3.5-flash": openai("gpt-4o-mini"),
-  "fallback-grok-4.3": openai("gpt-4o"),
-  "title-generator-model": openai("gpt-4o-mini"),
   "final-review-model": openai("gpt-4o"),
-  "model-enterprise-planning": openai("gpt-4o"),
-  "model-enterprise-coding": openai("gpt-4o"),
 });
 
 const buildGoogleMap = () => ({
@@ -333,20 +350,21 @@ const buildGoogleMap = () => ({
   "ask-model-free": google("gemini-2.5-flash-preview-05-20"),
   "agent-model": google("gemini-2.5-pro-preview-05-06"),
   "agent-model-free": google("gemini-2.5-flash-preview-05-20"),
-  "model-sonnet-4.6": google("gemini-2.5-pro-preview-05-06"),
-  "model-gpt-4.5": google("gemini-2.5-pro-preview-05-06"),
-  "model-gemini-3-flash": google("gemini-2.5-flash-preview-05-20"),
-  "model-deepseek-v4-flash": google("gemini-2.5-flash-preview-05-20"),
-  "model-opus-4.6": google("gemini-2.5-pro-preview-05-06"),
-  "model-kimi-k2.6": google("gemini-2.5-pro-preview-05-06"),
-  "fallback-agent-model": google("gemini-2.5-flash-preview-05-20"),
-  "fallback-ask-model": google("gemini-2.5-flash-preview-05-20"),
-  "fallback-gemini-3.5-flash": google("gemini-2.5-flash-preview-05-20"),
-  "fallback-grok-4.3": google("gemini-2.5-pro-preview-05-06"),
-  "title-generator-model": google("gemini-2.5-flash-preview-05-20"),
-  "final-review-model": google("gemini-2.5-pro-preview-05-06"),
+  "model-hwai-standard": google("gemini-2.5-flash-preview-05-20"),
+  "model-hwai-standard-vision": google("gemini-2.5-flash-preview-05-20"),
+  "model-hwai-pro-core": google("gemini-2.5-pro-preview-05-06"),
+  "model-hwai-pro-code": google("gemini-2.5-pro-preview-05-06"),
+  "model-hwai-pro-review": google("gemini-2.5-pro-preview-05-06"),
+  "model-hwai-max": google("gemini-2.5-pro-preview-05-06"),
   "model-enterprise-planning": google("gemini-2.5-pro-preview-05-06"),
   "model-enterprise-coding": google("gemini-2.5-flash-preview-05-20"),
+  "model-vision": google("gemini-2.5-flash-preview-05-20"),
+  "model-vision-fallback": google("gemini-2.5-pro-preview-05-06"),
+  "model-helper": google("gemini-2.5-flash-preview-05-20"),
+  "title-generator-model": google("gemini-2.5-flash-preview-05-20"),
+  "fallback-agent-model": google("gemini-2.5-flash-preview-05-20"),
+  "fallback-ask-model": google("gemini-2.5-flash-preview-05-20"),
+  "final-review-model": google("gemini-2.5-pro-preview-05-06"),
 });
 
 const buildAnthropicMap = () => ({
@@ -354,20 +372,21 @@ const buildAnthropicMap = () => ({
   "ask-model-free": anthropic("claude-sonnet-4-20250514"),
   "agent-model": anthropic("claude-sonnet-4-20250514"),
   "agent-model-free": anthropic("claude-sonnet-4-20250514"),
-  "model-sonnet-4.6": anthropic("claude-sonnet-4-20250514"),
-  "model-gpt-4.5": anthropic("claude-sonnet-4-20250514"),
-  "model-gemini-3-flash": anthropic("claude-sonnet-4-20250514"),
-  "model-deepseek-v4-flash": anthropic("claude-sonnet-4-20250514"),
-  "model-opus-4.6": anthropic("claude-opus-4-20250514"),
-  "model-kimi-k2.6": anthropic("claude-opus-4-20250514"),
-  "fallback-agent-model": anthropic("claude-sonnet-4-20250514"),
-  "fallback-ask-model": anthropic("claude-sonnet-4-20250514"),
-  "fallback-gemini-3.5-flash": anthropic("claude-sonnet-4-20250514"),
-  "fallback-grok-4.3": anthropic("claude-opus-4-20250514"),
-  "title-generator-model": anthropic("claude-sonnet-4-20250514"),
-  "final-review-model": anthropic("claude-sonnet-4-20250514"),
+  "model-hwai-standard": anthropic("claude-sonnet-4-20250514"),
+  "model-hwai-standard-vision": anthropic("claude-sonnet-4-20250514"),
+  "model-hwai-pro-core": anthropic("claude-sonnet-4-20250514"),
+  "model-hwai-pro-code": anthropic("claude-sonnet-4-20250514"),
+  "model-hwai-pro-review": anthropic("claude-opus-4-20250514"),
+  "model-hwai-max": anthropic("claude-opus-4-20250514"),
   "model-enterprise-planning": anthropic("claude-sonnet-4-20250514"),
   "model-enterprise-coding": anthropic("claude-sonnet-4-20250514"),
+  "model-vision": anthropic("claude-sonnet-4-20250514"),
+  "model-vision-fallback": anthropic("claude-sonnet-4-20250514"),
+  "model-helper": anthropic("claude-sonnet-4-20250514"),
+  "title-generator-model": anthropic("claude-sonnet-4-20250514"),
+  "fallback-agent-model": anthropic("claude-sonnet-4-20250514"),
+  "fallback-ask-model": anthropic("claude-sonnet-4-20250514"),
+  "final-review-model": anthropic("claude-opus-4-20250514"),
 });
 
 const buildOllamaMap = () => {
@@ -376,20 +395,21 @@ const buildOllamaMap = () => {
     "ask-model-free": ollama("qwen2.5-coder"),
     "agent-model": ollama("qwen2.5-coder"),
     "agent-model-free": ollama("qwen2.5-coder"),
-    "model-sonnet-4.6": ollama("qwen2.5-coder"),
-    "model-gpt-4.5": ollama("qwen2.5-coder"),
-    "model-gemini-3-flash": ollama("qwen2.5-coder"),
-    "model-deepseek-v4-flash": ollama("deepseek-coder:6.7b"),
-    "model-opus-4.6": ollama("qwen2.5-coder"),
-    "model-kimi-k2.6": ollama("qwen2.5-coder"),
-    "fallback-agent-model": ollama("qwen2.5-coder"),
-    "fallback-ask-model": ollama("qwen2.5-coder"),
-    "fallback-gemini-3.5-flash": ollama("qwen2.5-coder"),
-    "fallback-grok-4.3": ollama("qwen2.5-coder"),
-    "title-generator-model": ollama("qwen2.5-coder"),
-    "final-review-model": ollama("qwen2.5-coder"),
+    "model-hwai-standard": ollama("qwen2.5-coder"),
+    "model-hwai-standard-vision": ollama("qwen2.5-coder"),
+    "model-hwai-pro-core": ollama("qwen2.5-coder"),
+    "model-hwai-pro-code": ollama("qwen2.5-coder"),
+    "model-hwai-pro-review": ollama("qwen2.5-coder"),
+    "model-hwai-max": ollama("qwen2.5-coder"),
     "model-enterprise-planning": ollama("qwen2.5-coder"),
     "model-enterprise-coding": ollama("qwen2.5-coder"),
+    "model-vision": ollama("qwen2.5-coder"),
+    "model-vision-fallback": ollama("qwen2.5-coder"),
+    "model-helper": ollama("qwen2.5-coder"),
+    "title-generator-model": ollama("qwen2.5-coder"),
+    "fallback-agent-model": ollama("qwen2.5-coder"),
+    "fallback-ask-model": ollama("qwen2.5-coder"),
+    "final-review-model": ollama("qwen2.5-coder"),
     // Local-specific aliases
     "ollama-qwen": ollama("qwen2.5-coder"),
     "ollama-deepseek": ollama("deepseek-coder:6.7b"),
@@ -425,21 +445,22 @@ export const modelCutoffDates: Record<ModelName, string> &
   "ask-model": "January 2025",
   "ask-model-free": "May 2025",
   "agent-model": "April 2024",
-  "agent-model-free": "May 2025",
-  "model-sonnet-4.6": "May 2025",
-  "model-gpt-4.5": "February 2025",
-  "model-gemini-3-flash": "January 2025",
-  "model-deepseek-v4-flash": "May 2025",
-  "model-opus-4.6": "May 2025",
-  "model-kimi-k2.6": "April 2024",
-  "fallback-agent-model": "January 2025",
-  "fallback-ask-model": "January 2025",
-  "fallback-gemini-3.5-flash": "May 2026",
-  "fallback-grok-4.3": "December 2025",
-  "title-generator-model": "January 2025",
-  "final-review-model": "May 2025",
+  "agent-model-free": "April 2024",
+  "model-hwai-standard": "May 2025",
+  "model-hwai-standard-vision": "January 2025",
+  "model-hwai-pro-core": "February 2025",
+  "model-hwai-pro-code": "May 2025",
+  "model-hwai-pro-review": "May 2025",
+  "model-hwai-max": "May 2025",
   "model-enterprise-planning": "January 2025",
   "model-enterprise-coding": "January 2025",
+  "model-vision": "January 2025",
+  "model-vision-fallback": "December 2025",
+  "model-helper": "May 2025",
+  "title-generator-model": "January 2025",
+  "fallback-agent-model": "January 2025",
+  "fallback-ask-model": "January 2025",
+  "final-review-model": "May 2025",
   "ollama-qwen": "May 2025",
   "ollama-deepseek": "May 2025",
   "ollama-mistral": "May 2025",
@@ -456,23 +477,23 @@ export const modelDisplayNames: Record<ModelName, string> &
     "Auto, an intelligent model router built by HackWithAI v2",
   "agent-model-free":
     "Auto, an intelligent model router built by HackWithAI v2",
-  "model-sonnet-4.6": "Anthropic Claude Sonnet 4.6",
-  "model-gpt-4.5": "OpenAI GPT-4.5",
-  "model-gemini-3-flash": "Google Gemini 3 Flash",
-  "model-deepseek-v4-flash": "DeepSeek V4 Flash",
-  "model-opus-4.6": "Anthropic Claude Opus 4.6",
-  "model-kimi-k2.6": "Moonshot Kimi K2.6",
+  "model-hwai-standard": "DeepSeek V4 Pro",
+  "model-hwai-standard-vision": "Gemini 2.5 Flash — Vision",
+  "model-hwai-pro-core": "DeepSeek Chat — General Reasoning",
+  "model-hwai-pro-code": "Claude Sonnet 4.6 — Coding & Architecture",
+  "model-hwai-pro-review": "Claude Sonnet 4.6 — Review",
+  "model-hwai-max": "Claude Opus 4.6",
+  "model-enterprise-planning": "Hermes 3 405B — Enterprise Planning & Coordination",
+  "model-enterprise-coding": "Qwen 2.5 Coder 32B — Enterprise Coding",
+  "model-vision": "Gemini 2.5 Flash — Image & PDF Analysis",
+  "model-vision-fallback": "Grok — Vision Fallback",
+  "model-helper": "DeepSeek V4 Flash — Helper Tasks",
+  "title-generator-model": "DeepSeek V4 Flash — Title Generation",
   "fallback-agent-model":
     "Auto, an intelligent model router built by HackWithAI v2",
   "fallback-ask-model":
     "Auto, an intelligent model router built by HackWithAI v2",
-  "fallback-gemini-3.5-flash": "Google Gemini 3.5 Flash",
-  "fallback-grok-4.3":
-    "Auto, an intelligent model router built by HackWithAI v2",
-  "title-generator-model": "Google Gemini 3 Flash",
-  "final-review-model": "Claude Sonnet 4 — Final Review & Audit",
-  "model-enterprise-planning": "Hermes 3 405B — Enterprise Planning & Architecture",
-  "model-enterprise-coding": "Qwen 2.5 Coder 32B — Enterprise Coding & Automation",
+  "final-review-model": "Claude Sonnet 4.6 — Final Review & Audit",
   "ollama-qwen": "Ollama - Qwen 2.5 Coder (Local)",
   "ollama-deepseek": "Ollama - DeepSeek Coder 6.7B (Local)",
   "ollama-mistral": "Ollama - Mistral (Local)",
@@ -495,7 +516,8 @@ export function isDeepSeekModel(modelName: string): boolean {
   return (
     modelName === "ask-model-free" ||
     modelName === "agent-model-free" ||
-    modelName === "model-deepseek-v4-flash"
+    modelName === "model-hwai-standard" ||
+    modelName === "model-helper"
   );
 }
 
@@ -523,7 +545,7 @@ export function supportsMultimodalToolResults(modelName?: string): boolean {
 }
 
 export function isGeminiModel(modelName: string): boolean {
-  return modelName === "ask-model" || modelName === "model-gemini-3-flash";
+  return modelName === "ask-model" || modelName === "model-vision" || modelName === "model-hwai-standard-vision";
 }
 
 export function isOllamaModel(modelName: string): boolean {
@@ -543,11 +565,11 @@ export function resolveTierToProviderKey(
   if (tier === "auto") return null;
   switch (tier) {
     case "hwai-standard":
-      return isAgentMode(mode) ? "model-kimi-k2.6" : "model-gemini-3-flash";
+      return isAgentMode(mode) ? "model-hwai-standard" : "model-hwai-standard";
     case "hwai-pro":
-      return "model-sonnet-4.6";
+      return isAgentMode(mode) ? "model-hwai-pro-code" : "model-hwai-pro-core";
     case "hwai-max":
-      return "model-opus-4.6";
+      return "model-hwai-max";
     case "hwai-enterprise":
       return isAgentMode(mode) ? "model-enterprise-planning" : "model-enterprise-coding";
   }
