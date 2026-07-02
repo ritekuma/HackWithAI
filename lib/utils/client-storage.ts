@@ -271,6 +271,10 @@ interface StoredMessage {
 // ── Migration & initial load helper ─────────────────────────────────────
 let initPromise: Promise<void> | null = null;
 
+export function getStorageInitPromise(): Promise<void> | null {
+  return initPromise;
+}
+
 async function initializeStorage(): Promise<void> {
   if (typeof window === "undefined") return;
 

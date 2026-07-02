@@ -18,6 +18,7 @@ import {
   upsertStoredChat,
   setStoredMessages,
   getStoredMessages,
+  getStorageInitPromise,
 } from "@/lib/utils/client-storage";
 import { Messages } from "./Messages";
 import { ChatInput } from "./ChatInput";
@@ -1202,10 +1203,22 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   }, [chatData, chatId]);
 
   // Check if we tried to load an existing chat but it doesn't exist or doesn't belong to user
+  // Wait for storage initialization before considering a chat as "not found" (race condition)
+  const [storageReady, setStorageReady] = useState(false);
+  useEffect(() => {
+    const p = getStorageInitPromise();
+    if (p) {
+      p.then(() => setStorageReady(true));
+    } else {
+      setStorageReady(true);
+    }
+  }, []);
+
   const isChatNotFound =
     isExistingChat &&
     chatData === null &&
     shouldFetchMessages &&
+    storageReady &&
     !awaitingServerChat &&
     messages.length === 0;
 
