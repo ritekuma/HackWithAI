@@ -463,17 +463,19 @@ export class SummarizationTracker {
 const MODEL_FALLBACK_CHAIN: Partial<Record<ModelName, readonly ModelName[]>> = {
   "ask-model-free": ["fallback-ask-model"],
   "agent-model-free": ["fallback-agent-model"],
-  "model-hwai-standard": ["fallback-ask-model"],
+  "model-standard-chat": ["model-standard-fallback"],
   "ask-model": ["fallback-ask-model"],
   "agent-model": ["fallback-agent-model"],
-  "model-hwai-pro-core": ["fallback-ask-model"],
-  "model-hwai-pro-code": ["fallback-agent-model"],
+  "model-pro-chat": ["model-pro-fallback"],
+  "model-max-chat": ["model-max-fallback"],
+  "model-enterprise-plan": ["model-enterprise-fallback"],
+  "model-enterprise-code": ["model-enterprise-fallback"],
 };
 
 const ANTHROPIC_FALLBACK_CHAIN_BY_MODE: Record<ChatMode, readonly ModelName[]> =
   {
-    agent: ["model-hwai-pro-code", "fallback-agent-model"],
-    ask: ["model-hwai-pro-core"],
+    agent: ["model-pro-fallback", "fallback-agent-model"],
+    ask: ["model-pro-fallback"],
   };
 
 const ANTHROPIC_MULTIMODAL_AGENT_FALLBACK_CHAIN = [
@@ -491,11 +493,14 @@ const getFallbackKeys = (
   options: FallbackOptions = {},
 ): readonly ModelName[] | undefined => {
   if (!modelName) return undefined;
-  if (modelName === "model-hwai-max" || modelName === "model-hwai-pro-code" || modelName === "model-hwai-pro-review") {
+  if (modelName === "model-max-chat" || modelName === "model-pro-chat") {
     if (mode === "agent" && options.hasMultimodalToolResults) {
-      return ANTHROPIC_MULTIMODAL_AGENT_FALLBACK_CHAIN;
+      return ["model-vision" as ModelName, "fallback-ask-model" as ModelName];
     }
-    return ANTHROPIC_FALLBACK_CHAIN_BY_MODE[mode ?? "agent"];
+    return [modelName === "model-max-chat" ? "model-max-fallback" : "model-pro-fallback"] as ModelName[];
+  }
+  if (modelName === "model-enterprise-plan" || modelName === "model-enterprise-code") {
+    return ["model-enterprise-fallback" as ModelName];
   }
   return MODEL_FALLBACK_CHAIN[modelName as ModelName];
 };
@@ -508,7 +513,7 @@ export function getRetryFallbackModel(
     return mode === "agent" ? "fallback-agent-model" : "fallback-ask-model";
   }
   if (isGeminiModel(modelName)) {
-    return mode === "agent" ? "model-vision-fallback" : "fallback-ask-model";
+    return mode === "agent" ? "model-enterprise-plan" : "fallback-ask-model";
   }
   return "fallback-ask-model";
 }

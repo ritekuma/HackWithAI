@@ -54,6 +54,7 @@ export function selectModel(
   }
   const isAgent = isAgentMode(mode);
   const hasVision = !!hasImageOrPdf;
+  const taskType = classifyTask(prompt);
 
   const autoModel: ModelName = isAgent
     ? subscription === "free"
@@ -61,30 +62,59 @@ export function selectModel(
       : "agent-model"
     : hasVision
       ? "model-vision"
-      : "ask-model";
+      : autoRoute(taskType);
 
-  // Free users always route through the auto router
   if (!selectedModel || selectedModel === "auto" || subscription === "free") {
     return autoModel;
   }
 
-  // Standard: DeepSeek V4 Pro for text, Gemini Flash for vision
-  if (selectedModel === "hwai-standard") {
-    return hasVision ? "model-hwai-standard-vision" : "model-hwai-standard";
-  }
+  return tierRoute(selectedModel, taskType, hasVision, isAgent) ?? autoModel;
+}
 
-  // Pro: mode-aware — coding/architecture/review → Claude, core → DeepSeek
-  if (selectedModel === "hwai-pro" && !isAgent) {
-    return hasVision ? "model-vision" : "model-hwai-pro-core";
-  }
+// ── Task classification ──
 
-  // Enterprise: mode-aware — agent → Hermes, ask → Qwen Coder
-  if (selectedModel === "hwai-enterprise" && !isAgent) {
-    return hasVision ? "model-vision" : "model-enterprise-coding";
-  }
+type TaskType = "code" | "research" | "arch" | "vision" | "critic" | "general";
 
-  const providerKey = resolveTierToProviderKey(selectedModel, mode);
-  return providerKey ?? autoModel;
+function classifyTask(prompt?: string): TaskType {
+  if (!prompt) return "general";
+  const p = prompt.toLowerCase();
+  if (p.includes("code") || p.includes("write") || p.includes("implement") || p.includes("function") || p.includes("script") || p.includes("debug") || p.includes("refactor") || p.includes("terminal") || p.includes("shell")) return "code";
+  if (p.includes("research") || p.includes("analyze") || p.includes("explain") || p.includes("document") || p.includes("review") || p.includes("audit")) return "research";
+  if (p.includes("architecture") || p.includes("design") || p.includes("plan") || p.includes("system") || p.includes("infrastructure")) return "arch";
+  if (p.includes("critique") || p.includes("verify") || p.includes("second opinion") || p.includes("debate") || p.includes("challenge")) return "critic";
+  return "general";
+}
+
+function autoRoute(taskType: TaskType): ModelName {
+  switch (taskType) {
+    case "code": return "model-qwen-code" as ModelName;
+    case "research": return "model-kimi" as ModelName;
+    case "arch": return "model-hermes-plan" as ModelName;
+    case "critic": return "model-grok" as ModelName;
+    default: return "ask-model" as ModelName;
+  }
+}
+
+function tierRoute(tier: SelectedModel, taskType: TaskType, hasVision: boolean, isAgent: boolean): ModelName | null {
+  if (hasVision) return "model-vision" as ModelName;
+  if (isAgent) return resolveTierToProviderKey(tier, "agent");
+
+  const prefix = tier === "hwai-standard" ? "model-standard" :
+    tier === "hwai-pro" ? "model-pro" :
+    tier === "hwai-max" ? "model-max" :
+    tier === "hwai-enterprise" ? "model-enterprise" : null;
+  if (!prefix) return null;
+
+  const key = (() => {
+    switch (taskType) {
+      case "code": return `${prefix}-code`;
+      case "research": return `${prefix}-research`;
+      case "arch": return `${prefix}-chat`;
+      case "critic": return `${prefix}-critic`;
+      default: return `${prefix}-chat`;
+    }
+  })();
+  return key as ModelName;
 }
 
 /**
