@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useRef } from "react";
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components";
 import { ConvexProviderWithAuth } from "convex/react";
 import {
@@ -15,6 +15,12 @@ import {
 // Uses localStorage for chat and message persistence so that chats survive
 // page refreshes and server restarts.
 class MockConvexClient {
+  private updateCallbacks: Array<() => void> = [];
+
+  private notifyAll() {
+    for (const cb of this.updateCallbacks) cb();
+  }
+
   setAuth(_fetchToken: unknown, onChange: (value: boolean) => void) {
     onChange(true);
   }
@@ -22,19 +28,22 @@ class MockConvexClient {
   watchQuery(_query: unknown, args?: Record<string, unknown>) {
     const watch = {
       localQueryResult: () => {
-        // Return specific chat if args has an id (UUID-like string)
         if (args && typeof args.id === "string" && args.id.length > 10) {
           const chats = getStoredChats();
           return chats.find((c) => c.id === args.id) ?? null;
         }
-        // Paginated queries: return stored chats from localStorage
         if (args && args.paginationOpts) {
           const chats = getStoredChats();
           return { page: chats, isDone: true, continueCursor: "" };
         }
         return undefined;
       },
-      onUpdate: () => () => {},
+      onUpdate: (cb: () => void) => {
+        this.updateCallbacks.push(cb);
+        return () => {
+          this.updateCallbacks = this.updateCallbacks.filter((c) => c !== cb);
+        };
+      },
     };
     return watch;
   }
@@ -49,7 +58,12 @@ class MockConvexClient {
         const chats = getStoredChats();
         return { page: chats, isDone: true, continueCursor: "" };
       },
-      onUpdate: () => () => {},
+      onUpdate: (cb: () => void) => {
+        this.updateCallbacks.push(cb);
+        return () => {
+          this.updateCallbacks = this.updateCallbacks.filter((c) => c !== cb);
+        };
+      },
       loadMore: () => {},
       pageSize: 28,
     };
@@ -77,7 +91,6 @@ class MockConvexClient {
       } catch {}
       return {};
     }
-    // Persist chat saves
     if ("id" in args && "title" in args && typeof args.id === "string") {
       upsertStoredChat({
         _id: args.id as string,
@@ -86,6 +99,7 @@ class MockConvexClient {
         update_time: Date.now(),
         user_id: args.userId as string | undefined,
       });
+      this.notifyAll();
     }
     // Persist message saves
     if ("chatId" in args && "role" in args && "parts" in args) {
@@ -102,11 +116,13 @@ class MockConvexClient {
         finish_reason: args.finish_reason as string | undefined,
         usage: args.usage,
       });
+      this.notifyAll();
     }
     // Handle chat delete (args: { chatId: string })
     if ("chatId" in args && typeof args.chatId === "string" &&
         !("role" in args) && !("title" in args) && !("id" in args)) {
       deleteStoredChat(args.chatId as string);
+      this.notifyAll();
     }
     return {};
   }
@@ -160,7 +176,11 @@ function useLocalAuth() {
 // This prevents "useAuth must be used within an AuthKitProvider" and
 // "Could not find Convex client" errors.
 export function LocalClientProvider({ children }: { children: ReactNode }) {
-  const client = new MockConvexClient() as any;
+  const clientRef = useRef<MockConvexClient | null>(null);
+  if (!clientRef.current) {
+    clientRef.current = new MockConvexClient();
+  }
+  const client = clientRef.current as any;
 
   return (
     <AuthKitProvider

@@ -84,6 +84,9 @@ function isUnauthenticatedPath(pathname: string): boolean {
   if (pathname.startsWith("/downloads/")) {
     return true;
   }
+  if (pathname.startsWith("/api/chats")) {
+    return true;
+  }
   return false;
 }
 
