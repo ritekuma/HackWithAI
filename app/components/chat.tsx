@@ -750,7 +750,9 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     upsertStoredChat({
       _id: chatId,
       id: chatId,
-      title: streamedTitle || chatTitle || autoTitle,
+      title: streamedTitle ||
+        (chatTitle && chatTitle !== "New Chat" ? chatTitle : null) ||
+        autoTitle,
       update_time: Date.now(),
     });
 
