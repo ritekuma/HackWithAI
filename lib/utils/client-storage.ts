@@ -495,7 +495,9 @@ function getStoredMessagesSync(chatId: string): StoredMessage[] {
 function syncSetMessages(chatId: string, messages: StoredMessage[]): void {
   try {
     localStorage.setItem(`${LOCAL_MSGS_PREFIX}${chatId}`, JSON.stringify(messages));
-  } catch {}
+  } catch (e) {
+    console.error("[chat-storage] Failed to serialize messages for localStorage:", e);
+  }
 }
 
 function syncRemoveMessages(chatId: string): void {

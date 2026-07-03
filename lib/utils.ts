@@ -59,13 +59,13 @@ export function convertToUIMessages(messages: MessageRecord[]): ChatMessage[] {
       : {}),
     // Sanitize parts: remove any old URLs that may be stored in database
     // URLs expire, so we always fetch fresh ones via fileId
-    parts: message.parts.map((part: any) => {
+    parts: Array.isArray(message.parts) ? message.parts.map((part: any) => {
       if (part.type === "file" && part.url) {
         const { url, ...partWithoutUrl } = part;
         return partWithoutUrl;
       }
       return part;
-    }),
+    }) : [],
     sourceMessageId: message.source_message_id,
     metadata:
       message.feedback ||
