@@ -58,8 +58,9 @@ export function convertToUIMessages(messages: MessageRecord[]): ChatMessage[] {
       ? { createdAt: message.created_at }
       : {}),
     // Sanitize parts: remove any old URLs that may be stored in database
-    // URLs expire, so we always fetch fresh ones via fileId
-    parts: Array.isArray(message.parts) ? message.parts.map((part: any) => {
+    // URLs expire, so we always fetch fresh ones via fileId.
+    // Filter out null/undefined entries (JSON converts undefined array elements to null).
+    parts: Array.isArray(message.parts) ? message.parts.filter((p: any) => p != null).map((part: any) => {
       if (part.type === "file" && part.url) {
         const { url, ...partWithoutUrl } = part;
         return partWithoutUrl;

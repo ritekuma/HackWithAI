@@ -725,10 +725,32 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     if (!isExistingChat && wasNewChatRef.current) return;
     if (!chatId || chatId === "new") return;
 
+    const firstUserMsg = messages.find((m) => m.role === "user");
+    let autoTitle = "New Chat";
+    if (firstUserMsg?.parts && Array.isArray(firstUserMsg.parts)) {
+      const textPart = firstUserMsg.parts.find(
+        (p: any) => p != null && typeof p === "object" && p.type === "text" && typeof (p as any).text === "string",
+      ) as any;
+      if (textPart) {
+        autoTitle = textPart.text.trim().replace(/\s+/g, " ");
+        if (autoTitle.length > 60) {
+          autoTitle = autoTitle.substring(0, 60) + "...";
+        }
+      } else {
+        const strPart: any = firstUserMsg.parts.find(
+          (p: any) => typeof p === "string",
+        );
+        if (strPart && strPart.trim()) {
+          autoTitle = strPart.trim().replace(/\s+/g, " ");
+          if (autoTitle.length > 60) autoTitle = autoTitle.substring(0, 60) + "...";
+        }
+      }
+    }
+
     upsertStoredChat({
       _id: chatId,
       id: chatId,
-      title: streamedTitle || chatTitle || "New Chat",
+      title: streamedTitle || chatTitle || autoTitle,
       update_time: Date.now(),
     });
 
