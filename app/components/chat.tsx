@@ -722,7 +722,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
 
   // Persist chat data to localStorage/SQLite so history survives refresh/restart
   useEffect(() => {
-    if (!isExistingChat && wasNewChatRef.current) return;
+    if (!isExistingChat && messages.length === 0) return;
     if (!chatId || chatId === "new") return;
 
     const firstUserMsg = messages.find((m) => m.role === "user");
