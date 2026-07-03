@@ -1282,6 +1282,20 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     }
   }, []);
 
+  // When storage initialization completes but the Convex query cache hasn't
+  // been invalidated yet (notifyAll may not have fired or the subscription
+  // may not have triggered a refetch), directly load messages from storage.
+  // This is the definitive safety net ensuring messages always render after
+  // refresh in the authenticated WorkOS path.
+  useEffect(() => {
+    if (!storageReady || !isExistingChat || !shouldFetchMessages) return;
+    if (effectiveMessages.results && effectiveMessages.results.length > 0) return;
+    const msgs = getStoredMessages(chatId);
+    if (msgs.length > 0) {
+      setMessages(convertToUIMessages([...msgs].reverse() as any) as any);
+    }
+  }, [storageReady, isExistingChat, shouldFetchMessages, chatId, effectiveMessages.results, setMessages]);
+
   const isChatNotFound =
     isExistingChat &&
     chatData === null &&
