@@ -29,6 +29,23 @@ export class ConvexErrorBoundary extends Component<Props, State> {
     console.error("Error stack:", error.stack);
     console.error("Component stack:", errorInfo.componentStack);
 
+    // Send crash report to server for logging
+    try {
+      fetch("/api/memory/stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "client-crash",
+          error: {
+            message: error.message,
+            stack: error.stack?.substring(0, 2000),
+            componentStack: errorInfo.componentStack?.substring(0, 2000),
+            timestamp: Date.now(),
+          },
+        }),
+      }).catch(() => {});
+    } catch {}
+
     // Handle ConvexError with toast
     if (error instanceof ConvexError) {
       const errorData = error.data as { code?: string; message?: string };

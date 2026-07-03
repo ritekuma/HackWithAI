@@ -255,6 +255,39 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   const [awaitingServerChat, setAwaitingServerChat] = useState<boolean>(false);
   const handledMissingChatRef = useRef<string | null>(null);
 
+  // Global error reporter for diagnosing streaming crashes
+  useEffect(() => {
+    const handler = (event: ErrorEvent) => {
+      console.error("[chat] Global error:", event.error?.message, event.error?.stack?.substring(0, 500));
+      try {
+        fetch("/api/memory/stats", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "global-error",
+            error: {
+              message: event.error?.message || event.message,
+              stack: event.error?.stack?.substring(0, 2000),
+              filename: event.filename,
+              lineno: event.lineno,
+              colno: event.colno,
+              timestamp: Date.now(),
+            },
+          }),
+        }).catch(() => {});
+      } catch {}
+    };
+    const rejectionHandler = (event: PromiseRejectionEvent) => {
+      console.error("[chat] Unhandled rejection:", event.reason?.message, event.reason?.stack?.substring(0, 500));
+    };
+    window.addEventListener("error", handler);
+    window.addEventListener("unhandledrejection", rejectionHandler);
+    return () => {
+      window.removeEventListener("error", handler);
+      window.removeEventListener("unhandledrejection", rejectionHandler);
+    };
+  }, []);
+
   // Store file metadata separately from AI SDK message state (for temporary chats)
   const [tempChatFileDetails, setTempChatFileDetails] = useState<
     Map<string, FileDetails[]>
@@ -700,18 +733,22 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     });
 
     if (messages.length > 0) {
-      const storedMessages = messages.map((msg) => ({
-        _id: msg.id,
-        id: msg.id,
-        chatId,
-        role: msg.role,
-        parts: (msg as any).parts || [],
-        content: (msg as any).content,
-        update_time: Date.now(),
-        model: (msg as any).model,
-        mode: (msg as any).metadata?.mode,
-      }));
-      setStoredMessages(chatId, storedMessages);
+      try {
+        const storedMessages = messages.map((msg) => ({
+          _id: msg.id,
+          id: msg.id,
+          chatId,
+          role: msg.role,
+          parts: (msg as any).parts || [],
+          content: (msg as any).content,
+          update_time: Date.now(),
+          model: (msg as any).model,
+          mode: (msg as any).metadata?.mode,
+        }));
+        setStoredMessages(chatId, storedMessages);
+      } catch (e) {
+        console.error("[chat-persist] Failed to persist messages:", e);
+      }
     }
   }, [chatId, isExistingChat, messages, streamedTitle, chatTitle]);
 
