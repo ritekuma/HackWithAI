@@ -255,6 +255,12 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   const [awaitingServerChat, setAwaitingServerChat] = useState<boolean>(false);
   const handledMissingChatRef = useRef<string | null>(null);
 
+  // Track highest persisted message count. Prevents the persistence effect
+  // from overwriting restored localStorage data (e.g. 2 messages from
+  // initializeStorage) with stale/empty useChat state (0 or 1 message)
+  // on initial load of an existing chat.
+  const persistedCountRef = useRef(0);
+
   // Global error reporter for diagnosing streaming crashes
   useEffect(() => {
     const handler = (event: ErrorEvent) => {
@@ -757,6 +763,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     });
 
     if (messages.length > 0) {
+      if (isExistingChat && messages.length <= persistedCountRef.current) return;
       try {
         const storedMessages = messages.map((msg) => ({
           _id: msg.id,
@@ -770,6 +777,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
           mode: (msg as any).metadata?.mode,
         }));
         setStoredMessages(chatId, storedMessages);
+        persistedCountRef.current = messages.length;
       } catch (e) {
         console.error("[chat-persist] Failed to persist messages:", e);
       }
