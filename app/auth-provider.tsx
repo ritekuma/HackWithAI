@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useRef } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components";
 import { ConvexProviderWithAuth } from "convex/react";
 import {
@@ -9,12 +9,13 @@ import {
   getStoredMessages,
   appendStoredMessage,
   deleteStoredChat,
+  getStorageInitPromise,
 } from "@/lib/utils/client-storage";
 
 class MockConvexClient {
   private updateCallbacks: Array<() => void> = [];
 
-  private notifyAll() {
+  notifyAll() {
     for (const cb of this.updateCallbacks) cb();
   }
 
@@ -194,6 +195,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clientRef.current = new MockConvexClient();
   }
   const client = clientRef.current as any;
+
+  // After storage initialization completes (initializeStorage fetches from
+  // SQLite and populates localStorage), notify the MockConvexClient so all
+  // active useQuery/usePaginatedQuery subscriptions refetch. Without this,
+  // paginated queries return their initial (empty) cached result even after
+  // localStorage is populated, causing a blank conversation on refresh.
+  useEffect(() => {
+    const p = getStorageInitPromise();
+    if (p) {
+      p.then(() => {
+        clientRef.current?.notifyAll();
+      });
+    }
+  }, []);
 
   return (
     <AuthKitProvider>
