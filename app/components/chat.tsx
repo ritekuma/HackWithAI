@@ -687,9 +687,8 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     return () => setChatReset(null);
   }, [setChatReset, setMessages, setTodos, resetAutoContinueCount]);
 
-  // Persist chat data to localStorage in local-only mode
+  // Persist chat data to localStorage/SQLite so history survives refresh/restart
   useEffect(() => {
-    if (!isLocalOnlyModeClient()) return;
     if (!isExistingChat && wasNewChatRef.current) return;
     if (!chatId || chatId === "new") return;
 

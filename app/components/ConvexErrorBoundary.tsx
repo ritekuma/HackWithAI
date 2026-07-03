@@ -26,6 +26,8 @@ export class ConvexErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("ConvexErrorBoundary caught an error:", error, errorInfo);
+    console.error("Error stack:", error.stack);
+    console.error("Component stack:", errorInfo.componentStack);
 
     // Handle ConvexError with toast
     if (error instanceof ConvexError) {
