@@ -320,14 +320,25 @@ async function initializeStorage(): Promise<void> {
       const chats: StoredChat[] = data.chats || [];
       syncSetChats(chats);
 
-      // Preload messages for all chats
+      // Preload messages for all chats. Only overwrite localStorage if
+      // SQLite actually has data — otherwise the in-memory (just-written)
+      // localStorage data from a persistence effect that hasn't flushed to
+      // SQLite yet would be lost on refresh.
       for (const chat of chats) {
         const msgRes = await fetch(
           `/api/chats/${encodeURIComponent(chat.id)}/messages`,
         );
         if (msgRes.ok) {
           const msgData = await msgRes.json();
-          syncSetMessages(chat.id, msgData.messages || []);
+          const sqliteMessages = msgData.messages || [];
+          if (sqliteMessages.length > 0) {
+            syncSetMessages(chat.id, sqliteMessages);
+          } else {
+            const localMessages = getStoredMessagesSync(chat.id);
+            if (localMessages.length > 0) {
+              syncSetMessages(chat.id, localMessages);
+            }
+          }
         }
       }
       console.log("[chat-storage] Refreshed cache from SQLite:", chats.length, "chats");
