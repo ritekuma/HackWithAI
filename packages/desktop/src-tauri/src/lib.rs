@@ -974,10 +974,24 @@ async fn cancel_stream_command(
 /// `RUSTFLAGS=-D warnings`.
 #[cfg(debug_assertions)]
 async fn start_dev_auth_server(app_handle: tauri::AppHandle) {
-    let listener = match tokio::net::TcpListener::bind("127.0.0.1:0").await {
-        Ok(l) => l,
-        Err(e) => {
-            log::error!("Failed to start dev auth server: {}", e);
+    // Try safe ports (non-restricted by Chromium/WebKit) to avoid
+    // "Not allowed to use restricted network port" errors.
+    // Chromium blocks ports like 6000, 6665-6669, etc. All restricted
+    // ports are ≤ 6697, so we start at 15000.
+    let mut listener = None;
+    for port in 15000..15050 {
+        match tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port)).await {
+            Ok(l) => {
+                listener = Some(l);
+                break;
+            }
+            Err(_) => continue,
+        }
+    }
+    let listener = match listener {
+        Some(l) => l,
+        None => {
+            log::error!("Failed to start dev auth server: no safe port available in range 15000-15049");
             return;
         }
     };
