@@ -4,6 +4,7 @@ import {
   type ChatMode,
   type SelectedModel,
 } from "@/types/chat";
+import { consoleLogger as logger } from "@/lib/console-logger";
 
 export type ConversationDraft = {
   id: string;
@@ -228,13 +229,13 @@ export const cleanupExpiredDrafts = (): void => {
     // Only write if we actually removed drafts (avoid unnecessary writes)
     if (validDrafts.length !== store.drafts.length) {
       writeDraftStore({ ...store, drafts: validDrafts });
-      console.log(
+      logger.log(
         `[Draft Cleanup] Removed ${store.drafts.length - validDrafts.length} expired drafts`,
       );
     }
   } catch (error) {
     // Silently fail - cleanup is not critical
-    console.warn("[Draft Cleanup] Failed to cleanup expired drafts:", error);
+    logger.warn("[Draft Cleanup] Failed to cleanup expired drafts:", error);
   }
 };
 
@@ -306,9 +307,9 @@ async function initializeStorage(): Promise<void> {
         });
       }
       window.localStorage.setItem(MIGRATED_KEY, "true");
-      console.log("[chat-storage] Migrated to SQLite:", localChats.length, "chats");
+      logger.log("[chat-storage] Migrated to SQLite:", localChats.length, "chats");
     } catch (err) {
-      console.warn("[chat-storage] Migration deferred:", err);
+      logger.warn("[chat-storage] Migration deferred:", err);
     }
   }
 
@@ -341,10 +342,10 @@ async function initializeStorage(): Promise<void> {
           }
         }
       }
-      console.log("[chat-storage] Refreshed cache from SQLite:", chats.length, "chats");
+      logger.log("[chat-storage] Refreshed cache from SQLite:", chats.length, "chats");
     }
   } catch (err) {
-    console.warn("[chat-storage] Failed to refresh cache:", err);
+    logger.warn("[chat-storage] Failed to refresh cache:", err);
   }
 }
 
@@ -416,7 +417,7 @@ async function apiUpsertChat(chat: StoredChat): Promise<void> {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch {
-    console.warn("[chat-storage] Failed to upsert chat to SQLite:", chat.id);
+    logger.warn("[chat-storage] Failed to upsert chat to SQLite:", chat.id);
   }
 }
 
@@ -434,7 +435,7 @@ async function apiDeleteChat(chatId: string): Promise<void> {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch {
-    console.warn("[chat-storage] Failed to delete chat from SQLite:", chatId);
+    logger.warn("[chat-storage] Failed to delete chat from SQLite:", chatId);
   }
 }
 
@@ -457,7 +458,7 @@ async function apiAppendMessage(chatId: string, message: StoredMessage): Promise
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch {
-    console.warn("[chat-storage] Failed to append message to SQLite:", message.id);
+    logger.warn("[chat-storage] Failed to append message to SQLite:", message.id);
   }
 }
 
@@ -473,7 +474,7 @@ async function apiSetMessages(chatId: string, messages: StoredMessage[]): Promis
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch {
-    console.warn("[chat-storage] Failed to set messages to SQLite:", chatId);
+    logger.warn("[chat-storage] Failed to set messages to SQLite:", chatId);
   }
 }
 
@@ -507,7 +508,7 @@ function syncSetMessages(chatId: string, messages: StoredMessage[]): void {
   try {
     localStorage.setItem(`${LOCAL_MSGS_PREFIX}${chatId}`, JSON.stringify(messages));
   } catch (e) {
-    console.error("[chat-storage] Failed to serialize messages for localStorage:", e);
+    logger.error("[chat-storage] Failed to serialize messages for localStorage:", e);
   }
 }
 

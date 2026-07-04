@@ -52,6 +52,7 @@ import { coerceSelectedModel } from "@/types/chat";
 import type { ContextUsageData } from "./ContextUsageIndicator";
 import { shouldTreatAsMerge } from "@/lib/utils/todo-utils";
 import { v4 as uuidv4 } from "uuid";
+import { consoleLogger as logger } from "@/lib/console-logger";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useParams, useRouter } from "next/navigation";
 import { ConvexErrorBoundary } from "./ConvexErrorBoundary";
@@ -264,7 +265,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   // Global error reporter for diagnosing streaming crashes
   useEffect(() => {
     const handler = (event: ErrorEvent) => {
-      console.error("[chat] Global error:", event.error?.message, event.error?.stack?.substring(0, 500));
+      logger.error("[chat] Global error:", event.error?.message, event.error?.stack?.substring(0, 500));
       try {
         fetch("/api/memory/stats", {
           method: "POST",
@@ -284,7 +285,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       } catch {}
     };
     const rejectionHandler = (event: PromiseRejectionEvent) => {
-      console.error("[chat] Unhandled rejection:", event.reason?.message, event.reason?.stack?.substring(0, 500));
+      logger.error("[chat] Unhandled rejection:", event.reason?.message, event.reason?.stack?.substring(0, 500));
     };
     window.addEventListener("error", handler);
     window.addEventListener("unhandledrejection", rejectionHandler);
@@ -781,7 +782,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
         setStoredMessages(chatId, storedMessages);
         persistedCountRef.current = messages.length;
       } catch (e) {
-        console.error("[chat-persist] Failed to persist messages:", e);
+        logger.error("[chat-persist] Failed to persist messages:", e);
       }
     }
   }, [chatId, isExistingChat, messages, streamedTitle, chatTitle]);
@@ -1162,10 +1163,10 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
           );
           removeQueuedMessage(nextMessage.id);
           sendPromise.catch((error) => {
-            console.error("Failed to send queued message:", error);
+            logger.error("Failed to send queued message:", error);
           });
         } catch (error) {
-          console.error("Failed to send queued message:", error);
+          logger.error("Failed to send queued message:", error);
         }
       }
 
@@ -1232,7 +1233,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       initializeChat(newChatId);
       router.push(`/c/${newChatId}`);
     } catch (error) {
-      console.error("Failed to branch chat:", error);
+      logger.error("Failed to branch chat:", error);
       toast.error("Failed to branch chat. Please try again.");
     }
   };
