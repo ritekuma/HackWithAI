@@ -51,7 +51,9 @@
     "docker:build:push": "docker buildx build --platform linux/amd64,linux/arm64 --push -t hwai/sandbox:latest -f docker/Dockerfile docker/",
     "sandbox:deploy:dev": "pnpm docker:build:push && pnpm e2b:build:dev",
     "sandbox:deploy:prod": "pnpm docker:build:push && pnpm e2b:build:prod",
-    "sandbox:deploy": "pnpm docker:build:push && pnpm e2b:build:dev && pnpm e2b:build:prod"
+    "sandbox:deploy": "pnpm docker:build:push && pnpm e2b:build:dev && pnpm e2b:build:prod",
+    "dev:web": "next dev --turbopack",
+    "dev:full": "concurrently \"next dev --turbopack\" \"npx convex dev\""
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.81",
@@ -252,4 +254,3 @@
     ]
   }
 }
-
