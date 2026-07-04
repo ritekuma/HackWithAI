@@ -51,6 +51,7 @@ class MockConvexClient {
   watchPaginatedQuery(_query: unknown, args?: Record<string, unknown>) {
     const watch = {
       localQueryResult: () => {
+        if (typeof args === "string") return { page: [], isDone: true, continueCursor: "" };
         if (args && typeof args === "object" && "chatId" in args) {
           const msgs = getStoredMessages(args.chatId as string);
           return { page: msgs, isDone: true, continueCursor: "" };

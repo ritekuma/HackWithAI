@@ -53,7 +53,7 @@ export async function fetchWithErrorHandlers(
 export function convertToUIMessages(messages: MessageRecord[]): ChatMessage[] {
   return messages.map((message) => ({
     id: message.id,
-    role: message.role || "user",
+    role: message.role,
     ...(typeof message.created_at === "number"
       ? { createdAt: message.created_at }
       : {}),
