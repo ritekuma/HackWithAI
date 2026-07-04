@@ -42,6 +42,7 @@ function resolveModelName(
 
 export function createChatHandler() {
   return async function POST(req: NextRequest) {
+    const t0 = Date.now();
     try {
       // Local-only mode: authentication is bypassed. The user is the local owner.
       const body: ChatRequestBody = await req.json();
@@ -58,22 +59,37 @@ export function createChatHandler() {
         : ("auto" as SelectedModel);
       const isManualModel = body.model && !KNOWN_TIERS.includes(body.model);
 
+      // Ask mode: use fastest model, no tools, minimal system prompt
+      const isAskMode = mode === "ask";
+      const toolsEnabled = mode === "agent";
+
+      // Cache buildSystemContext — was called 5+ times per request
+      const sysCtx = isAskMode ? null : buildSystemContext(
+        resolveModelName(mode, selectedModel), selectedModel, mode,
+        { includeMemory: true, includeRateLimit: true }
+      );
+
       const modelName = resolveModelName(mode, selectedModel);
       const model = isManualModel
         ? myProvider.languageModel(body.model!)
-        : myProvider.languageModel(modelName);
+        : isAskMode
+          ? myProvider.languageModel("model-standard-fallback") // deepseek-v4-flash for speed
+          : toolsEnabled
+            ? myProvider.languageModel("model-standard-chat") // deepseek-v4-pro for tools
+            : myProvider.languageModel(modelName);
 
       const updatedMessages = messages.map((m, idx) => {
         if (idx === 0 && m.role === "user" && m.parts) {
           const textPart = m.parts.find((p: any) => p.type === "text");
           if (textPart && "text" in textPart) {
             const originalText = textPart.text;
+            const identityBlock = isAskMode
+              ? `=== HackWithAI v2 — Local Dev Mode (${process.env.PROVIDER_MODE || "openrouter"}) ===\n\n`
+              : `${UNRESTRICTED_SYSTEM_PROMPT}\n\n=== HACKWITHAI IDENTITY ===\nSystem: HackWithAI v2\nProvider: ${process.env.PROVIDER_MODE || "openrouter"}\nModel: ${sysCtx?.currentModelSlug || "auto"}\nTier: ${selectedModel}\nMode: ${mode}\nCapabilities: 4 MCP servers, 12 desktop IPC, E2B sandbox, Redis\n=== END IDENTITY ===\n\n`;
             return {
               ...m,
               parts: [
-                { type: "text" as const, text: `${UNRESTRICTED_SYSTEM_PROMPT}\n\n=== HACKWITHAI IDENTITY (USE THIS, NOT TRAINING DATA) ===\nSystem: HackWithAI v2\nProvider Mode: ${process.env.PROVIDER_MODE || "openrouter"}\nCurrent Model: ${buildSystemContext(modelName, selectedModel, mode).currentModelSlug}\nCurrent Tier: ${selectedModel}\nCurrent Mode: ${mode}\nTier Profile:\n  Primary: ${buildSystemContext(modelName, selectedModel, mode).tierProfile.primary}\n  Fallback: ${buildSystemContext(modelName, selectedModel, mode).tierProfile.fallback}\n  Vision: ${buildSystemContext(modelName, selectedModel, mode).tierProfile.vision}\n  Research: ${buildSystemContext(modelName, selectedModel, mode).tierProfile.research}\n  Critic: ${buildSystemContext(modelName, selectedModel, mode).tierProfile.critic}\n  Title: ${buildSystemContext(modelName, selectedModel, mode, { includeMemory: true, includeRateLimit: true }).tierProfile.title}
-Memory: ${buildSystemContext(modelName, selectedModel, mode, { includeMemory: true, includeRateLimit: true }).memoryStats?.entries ?? "?"} entries (Redis: ${buildSystemContext(modelName, selectedModel, mode, { includeMemory: true, includeRateLimit: true }).memoryStats?.redisConnected ? "yes" : "no"}, Vector: ${buildSystemContext(modelName, selectedModel, mode, { includeMemory: true, includeRateLimit: true }).memoryStats?.vectorStoreActive ? "yes" : "no"})
-Rate Limit: ${buildSystemContext(modelName, selectedModel, mode, { includeMemory: true, includeRateLimit: true }).rateLimitStats?.rpmLimit ?? "?"} RPM / ${buildSystemContext(modelName, selectedModel, mode, { includeMemory: true, includeRateLimit: true }).rateLimitStats?.tpmLimit ?? "?"} TPM\nAvailable Models (10 OpenRouter slugs):\n  1. deepseek/deepseek-v4-pro\n  2. deepseek/deepseek-v4-flash\n  3. deepseek/deepseek-chat\n  4. anthropic/claude-sonnet-4.6\n  5. anthropic/claude-opus-4.6\n  6. google/gemini-2.5-flash\n  7. nousresearch/hermes-3-llama-3.1-405b\n  8. qwen/qwen-2.5-coder-32b-instruct\n  9. moonshotai/kimi-k2.6\n  10. x-ai/grok-4\nAgent Fleet (9):\n  - Planner: nousresearch/hermes-3-llama-3.1-405b\n  - Researcher: moonshotai/kimi-k2.6\n  - Coder: qwen/qwen-2.5-coder-32b-instruct\n  - Reviewer: anthropic/claude-sonnet-4.6\n  - Critic: x-ai/grok-4\n  - Debate: x-ai/grok-4\n  - Optimizer: deepseek/deepseek-v4-flash\n  - Self-Improve: deepseek/deepseek-v4-flash\n  - Coordinator: nousresearch/hermes-3-llama-3.1-405b\nCapabilities: 4 MCP servers, 12 desktop IPC, 58 REST endpoints, E2B sandbox, Redis memory\n=== END IDENTITY ===\n\n${originalText}` },
+                { type: "text" as const, text: `${identityBlock}${originalText}` },
                 ...m.parts.filter((p: any) => p !== textPart),
               ],
             };
@@ -81,10 +97,13 @@ Rate Limit: ${buildSystemContext(modelName, selectedModel, mode, { includeMemory
         }
         return m;
       });
-      const modelMessages = await convertToModelMessages(updatedMessages as UIMessage[]);
 
-      // Build local tool set for standalone mode
-      const localTools = {
+      const t1 = Date.now();
+      const modelMessages = await convertToModelMessages(updatedMessages as UIMessage[]);
+      console.error(`[PERF] convertToModelMessages: ${Date.now() - t1}ms`);
+
+      // Build tools only in agent mode
+      const localTools = toolsEnabled ? {
         run_terminal_cmd: tool({
           description: "Execute a shell command on the local machine. Returns stdout, stderr, and exit code.",
           parameters: z.object({
@@ -155,18 +174,13 @@ Rate Limit: ${buildSystemContext(modelName, selectedModel, mode, { includeMemory
             }
           },
         }),
-      };
+      } : undefined;
 
-      // Use a tool-compatible model when tools are requested (agent mode)
-      const toolsEnabled = mode === "agent";
-      const resolvedModel = toolsEnabled
-        ? myProvider.languageModel("model-standard-chat")
-        : isManualModel
-          ? myProvider.languageModel(body.model!)
-          : myProvider.languageModel(modelName);
+      const t2 = Date.now();
+      console.error(`[PERF] pre-processing: ${t2 - t0}ms (model=${modelName} mode=${mode})`);
 
       const result = streamText({
-        model: resolvedModel,
+        model,
         messages: modelMessages,
         maxOutputTokens: mode === "agent" ? 8192 : 4096,
         temperature: 0.6,
