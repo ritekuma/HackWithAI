@@ -1022,6 +1022,9 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
 
     if (
       current.length === uiMessages.length &&
+      current.length > 0 &&
+      current[0].role &&  // current messages have valid roles (not chat objects)
+      uiMessages[0].role && // uiMessages have valid roles
       current.every(
         (m, i) =>
           m.id === uiMessages[i].id &&
