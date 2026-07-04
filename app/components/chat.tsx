@@ -765,7 +765,9 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     if (messages.length > 0) {
       if (isExistingChat && messages.length <= persistedCountRef.current) return;
       try {
-        const storedMessages = messages.map((msg) => ({
+        const storedMessages = messages
+          .filter((msg) => msg.role) // skip messages without role (prevents SQLite NOT NULL error)
+          .map((msg) => ({
           _id: msg.id,
           id: msg.id,
           chatId,
