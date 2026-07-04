@@ -659,14 +659,20 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
 
       const isTemporaryChat =
         !isExistingChatRef.current && temporaryChatsEnabledRef.current;
-      if (!isExistingChatRef.current && !isTemporaryChat) {
+      // Don't finalize a new chat if the stream ended with a tool call —
+      // the AI SDK will auto-continue with the next round (tool result →
+      // final text). Finalizing here would trigger Convex sync/persist
+      // with incomplete messages, replacing/corrupting the ongoing stream.
+      const lastMsg = messages[messages.length - 1];
+      const endedWithToolCall = lastMsg?.role === "assistant" &&
+        Array.isArray(lastMsg?.parts) &&
+        lastMsg.parts.some((p: any) => p.type && p.type.startsWith("tool-"));
+      if (!isExistingChatRef.current && !isTemporaryChat && !endedWithToolCall) {
         setAwaitingServerChat(true);
-        // Update URL without full navigation so this Chat stays mounted and
-        // status can transition to "ready" (stop button → send button).
         window.history.replaceState({}, "", `/c/${chatId}`);
         removeDraft("new");
         setIsExistingChat(true);
-      } else {
+      } else if (!endedWithToolCall) {
         setAwaitingServerChat(false);
       }
     },

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { streamText, type UIMessage, convertToModelMessages, tool } from "ai";
+import { streamText, type UIMessage, convertToModelMessages, tool, stepCountIs } from "ai";
 import { myProvider, resolveTierToProviderKey, buildSystemContext, type ModelName } from "@/lib/ai/providers";
 import { ChatSDKError } from "@/lib/errors";
 import type { ChatMode, SelectedModel } from "@/types/chat";
@@ -185,6 +185,7 @@ export function createChatHandler() {
         maxOutputTokens: mode === "agent" ? 8192 : 4096,
         temperature: 0.6,
         tools: toolsEnabled ? localTools : undefined,
+        ...(toolsEnabled ? { stopWhen: stepCountIs(5) } : {}),
       });
 
       return result.toUIMessageStreamResponse({
