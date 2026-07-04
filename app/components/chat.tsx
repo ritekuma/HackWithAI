@@ -523,8 +523,9 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
 
     transport: transportRef.current,
 
-    onData: (dataPart) => {
-      setDataStream((ds) => (ds ? [...ds, dataPart] : []));
+      onData: (dataPart) => {
+        setDataStream((ds) => (ds ? [...ds, dataPart] : []));
+
       switch (dataPart.type) {
         case "data-upload-status": {
           const uploadData = dataPart.data as {
@@ -654,6 +655,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       }
     },
     onFinish: () => {
+      const lastMsg = messages[messages.length - 1];
       setIsAutoResuming(false);
       dispatchStreaming({ type: "RESET_ON_FINISH" });
 
@@ -663,10 +665,14 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       // the AI SDK will auto-continue with the next round (tool result →
       // final text). Finalizing here would trigger Convex sync/persist
       // with incomplete messages, replacing/corrupting the ongoing stream.
-      const lastMsg = messages[messages.length - 1];
-      const endedWithToolCall = lastMsg?.role === "assistant" &&
+      // Only skip when the message has tool parts WITHOUT text (pure tool-call step).
+      const hasToolParts = lastMsg?.role === "assistant" &&
         Array.isArray(lastMsg?.parts) &&
         lastMsg.parts.some((p: any) => p.type && p.type.startsWith("tool-"));
+      const hasTextParts = lastMsg?.role === "assistant" &&
+        Array.isArray(lastMsg?.parts) &&
+        lastMsg.parts.some((p: any) => p.type === "text" && (p as any).text?.trim());
+      const endedWithToolCall = hasToolParts && !hasTextParts;
       if (!isExistingChatRef.current && !isTemporaryChat && !endedWithToolCall) {
         setAwaitingServerChat(true);
         window.history.replaceState({}, "", `/c/${chatId}`);
