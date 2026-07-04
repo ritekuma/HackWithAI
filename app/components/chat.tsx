@@ -1294,7 +1294,9 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   // refresh in the authenticated WorkOS path.
   useEffect(() => {
     if (!storageReady || !isExistingChat || !shouldFetchMessages) return;
-    if (effectiveMessages.results && effectiveMessages.results.length > 0) return;
+    // Skip only if results have valid messages (with role). Chat objects have no role.
+    if (effectiveMessages.results && effectiveMessages.results.length > 0 &&
+        effectiveMessages.results[0]?.role) return;
     const msgs = getStoredMessages(chatId);
     if (msgs.length > 0) {
       setMessages(convertToUIMessages([...msgs].reverse() as any) as any);
