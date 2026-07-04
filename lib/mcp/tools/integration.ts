@@ -5,19 +5,39 @@ import type { ToolRegistry } from "@/lib/ai-runtime/tools/registry";
 import type { RegisteredTool, ToolExecutor } from "@/lib/ai-runtime/tools/types";
 import { MCP_TOOLS } from "./registry";
 
+let _managerPromise: Promise<any> | null = null;
+function getMCPManagerAsync() {
+  if (!_managerPromise) {
+    _managerPromise = import("@/lib/mcp/bootstrap").then(m => m.getMCPManager());
+  }
+  return _managerPromise;
+}
+
 /**
  * Register all MCP-discovered tools into the provided ToolRegistry.
- * Each tool is registered WITHOUT an executor — the MCP server layer
- * handles execution via its own callTool dispatch.
+ * Each tool is registered with a real executor that delegates to the
+ * appropriate MCP server via callTool dispatch.
  */
 export function registerMCPTools(registry: ToolRegistry): void {
   const mcpExecutor: ToolExecutor = {
     async execute(tool: RegisteredTool, args: Record<string, unknown>): Promise<unknown> {
-      // Execution is handled by the MCP server layer via callTool.
-      // This executor is a placeholder for the ToolRegistry contract.
-      throw new Error(
-        `Tool '${tool.id}' is an MCP-registered tool. Use the MCP server layer for execution.`,
-      );
+      try {
+        const manager = await getMCPManagerAsync();
+        const server = manager.getServerForTool?.(tool.id);
+        if (server) {
+          return await server.callTool({ id: tool.id, tool: tool.id, arguments: args });
+        }
+        // Fallback: try calling through the MCP API endpoint
+        const res = await fetch("/api/mcp/call", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tool: tool.id, args }),
+        });
+        if (res.ok) return await res.json();
+        return { error: `MCP tool '${tool.id}' execution failed: HTTP ${res.status}` };
+      } catch (e: any) {
+        return { error: `MCP tool '${tool.id}' not available in this environment: ${e.message}` };
+      }
     },
   };
 
