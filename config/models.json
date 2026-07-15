@@ -1,0 +1,159 @@
+{
+  "$schema": "./models.schema.json",
+  "_comment": "HackWithAI v2 — Config-Driven Model Routing. Edit this file to switch models without touching code. Future-proof: just update model IDs when DeepSeek V5, Claude 5, Gemini 3 release. All model IDs follow OpenRouter format: 'provider/model-name'. Auto Mode uses the 'routing' section below to classify user intent.",
+
+  "version": "2.0.0",
+  "lastUpdated": "2026-07-06",
+
+  "providers": {
+    "openrouter": { "enabled": true,  "role": "primary",     "note": "सभी AI requests यहाँ से" },
+    "openai":     { "enabled": false, "role": "future",      "note": "भविष्य के moderation/features" },
+    "anthropic":  { "enabled": false, "role": "via-OR",      "note": "OpenRouter के माध्यम से" },
+    "google":     { "enabled": false, "role": "via-OR",      "note": "OpenRouter के माध्यम से" },
+    "ollama":     { "enabled": false, "role": "local-test",  "note": "केवल optional local testing" },
+    "groq":       { "enabled": false, "role": "future",      "note": "Future speed tier" },
+    "perplexity": { "enabled": false, "role": "web-search",  "note": "Web search enhancement" },
+    "jina":       { "enabled": false, "role": "url-reader",  "note": "URL fetching & extraction" }
+  },
+
+  "global": {
+    "vision":      { "model": "google/gemini-2.5-flash",            "useCases": ["ocr", "pdf", "images", "ui-debug", "screenshot", "file-understanding"] },
+    "longContext": { "model": "moonshotai/kimi-k2.6",               "useCases": ["huge-repos", "long-docs", "large-prompts", "memory-analysis"] },
+    "critic":      { "model": "x-ai/grok-4",                        "useCases": ["debate", "second-opinion", "critic", "counter-arguments"] }
+  },
+
+  "tiers": {
+    "standard": {
+      "label": "Standard",
+      "primary":   { "model": "deepseek/deepseek-v4-pro",  "useCases": ["general-chat", "coding", "reasoning", "tool-calling", "agent-execution"] },
+      "fallback":  { "model": "deepseek/deepseek-v4-flash", "useCases": ["fast-response"] }
+    },
+    "pro": {
+      "label": "Pro",
+      "primary":   { "model": "anthropic/claude-sonnet-4.6", "useCases": ["better-reasoning", "writing", "code-review", "architecture", "analysis"] }
+    },
+    "max": {
+      "label": "Max",
+      "primary":   { "model": "anthropic/claude-opus-4.6",  "useCases": ["long-reasoning", "complex-architecture", "large-planning", "difficult-coding"] }
+    },
+    "enterprise": {
+      "label": "Enterprise",
+      "primary":   { "model": "nousresearch/hermes-3-llama-3.1-405b", "useCases": ["enterprise-orchestration", "large-repositories", "long-workflows", "multi-agent-execution"] },
+      "secondary": { "model": "qwen/qwen-2.5-coder-32b-instruct",      "useCases": ["enterprise-coding", "codebase-sweep", "refactoring-at-scale"] }
+    }
+  },
+
+  "agents": {
+    "general-chat":        { "model": "deepseek/deepseek-v4-pro",             "role": "Default chat fallback" },
+    "fast-chat":           { "model": "deepseek/deepseek-v4-flash",            "role": "Quick responses, low-latency" },
+    "coding":              { "model": "deepseek/deepseek-v4-pro",             "role": "Refactoring, bug fixing, repo understanding, MCP, tool execution" },
+    "code-review":         { "model": "anthropic/claude-sonnet-4.6",           "role": "PR review, code review, security review" },
+    "architecture":        { "model": "anthropic/claude-sonnet-4.6",           "role": "Architecture decisions, task breakdown, planning" },
+    "enterprise-builder":  { "model": "nousresearch/hermes-3-llama-3.1-405b", "role": "Large-repo orchestration" },
+    "enterprise-coding":   { "model": "qwen/qwen-2.5-coder-32b-instruct",     "role": "Enterprise-scale refactoring" },
+    "vision":              { "model": "google/gemini-2.5-flash",              "role": "OCR, PDF, images, UI debug" },
+    "research":            { "model": "google/gemini-2.5-flash",              "role": "Web research, quick lookup" },
+    "long-context":        { "model": "moonshotai/kimi-k2.6",                  "role": "Huge repos, memory analysis" },
+    "debate":              { "model": "x-ai/grok-4",                          "role": "Multi-agent debate engine" },
+    "consensus":           { "model": "anthropic/claude-sonnet-4.6",          "role": "Final consensus after debate round" }
+  },
+
+  "agentFleet": [
+    { "key": "agent-planner",      "model": "nousresearch/hermes-3-llama-3.1-405b", "role": "Strategic planning, pentest roadmaps" },
+    { "key": "agent-researcher",   "model": "moonshotai/kimi-k2.6",                 "role": "Long-context research, CVE lookup" },
+    { "key": "agent-coder",        "model": "qwen/qwen-2.5-coder-32b-instruct",     "role": "Code generation, exploit dev" },
+    { "key": "agent-reviewer",     "model": "anthropic/claude-sonnet-4.6",          "role": "Code review, security audit" },
+    { "key": "agent-critic",       "model": "x-ai/grok-4",                          "role": "Adversarial critique" },
+    { "key": "agent-debate",       "model": "x-ai/grok-4",                          "role": "Debate engine (5 agents)" },
+    { "key": "agent-optimizer",    "model": "deepseek/deepseek-v4-flash",           "role": "Tool mapping, cost optimization" },
+    { "key": "agent-self-improve", "model": "deepseek/deepseek-v4-flash",           "role": "ELO tracking, learning loop" },
+    { "key": "agent-coordinator",  "model": "nousresearch/hermes-3-llama-3.1-405b", "role": "Pipeline orchestration" }
+  ],
+
+  "debateEngine": {
+    "enabled": true,
+    "rounds": [
+      { "step": 1, "agent": "deepseek",  "model": "deepseek/deepseek-v4-pro",   "task": "Initial reasoning + answer" },
+      { "step": 2, "agent": "claude",    "model": "anthropic/claude-sonnet-4.6", "task": "Challenge with counter-arguments" },
+      { "step": 3, "agent": "grok",      "model": "x-ai/grok-4",                 "task": "Criticize both positions adversarially" },
+      { "step": 4, "agent": "consensus", "model": "anthropic/claude-sonnet-4.6", "task": "Synthesize final consensus" }
+    ]
+  },
+
+  "autoMode": {
+    "enabled": true,
+    "description": "Auto Mode manually model select नहीं करता — intent classification होती है",
+    "rules": [
+      { "intent": "coding",           "patterns": ["write code", "implement", "fix bug", "refactor", "add function", "code"],       "model": "deepseek/deepseek-v4-pro" },
+      { "intent": "image",            "patterns": ["image", "screenshot", "ocr", "pdf", "ui screenshot"],                        "model": "google/gemini-2.5-flash" },
+      { "intent": "huge-repository",  "patterns": ["whole codebase", "analyze repo", "scan repository", "all files"],              "model": "moonshotai/kimi-k2.6" },
+      { "intent": "architecture",     "patterns": ["design", "architect", "plan", "structure", "high-level"],                   "model": "anthropic/claude-sonnet-4.6" },
+      { "intent": "enterprise-workflow", "patterns": ["enterprise", "orchestrate", "long workflow", "multi-agent", "team"],     "model": "nousresearch/hermes-3-llama-3.1-405b" },
+      { "intent": "debate",           "patterns": ["debate", "discuss", "argue", "pros and cons", "second opinion"],             "model": "x-ai/grok-4" },
+      { "intent": "fast",             "patterns": ["quick", "fast", "short", "tl;dr", "summarize"],                                "model": "deepseek/deepseek-v4-flash" },
+      { "intent": "default",          "patterns": [],                                                                              "model": "deepseek/deepseek-v4-pro" }
+    ]
+  },
+
+  "tierKeys": {
+    "_comment": "These keys map directly to the old providers.ts TIER_MAP. Keep names stable for backwards compat with chat.tsx, /api/chat, agent-routing.ts.",
+    "ask-model":              "deepseek/deepseek-chat",
+    "ask-model-free":         "deepseek/deepseek-v4-pro",
+    "agent-model":            "nousresearch/hermes-3-llama-3.1-405b",
+    "agent-model-free":       "deepseek/deepseek-v4-pro",
+
+    "model-standard-chat":    "deepseek/deepseek-v4-pro",
+    "model-standard-code":    "deepseek/deepseek-v4-pro",
+    "model-standard-research":"moonshotai/kimi-k2.6",
+    "model-standard-vision":  "google/gemini-2.5-flash",
+    "model-standard-critic":  "x-ai/grok-4",
+    "model-standard-title":   "deepseek/deepseek-v4-flash",
+    "model-standard-fallback":"deepseek/deepseek-v4-flash",
+
+    "model-pro-chat":         "anthropic/claude-sonnet-4.6",
+    "model-pro-code":         "anthropic/claude-sonnet-4.6",
+    "model-pro-research":     "moonshotai/kimi-k2.6",
+    "model-pro-vision":       "google/gemini-2.5-flash",
+    "model-pro-critic":       "x-ai/grok-4",
+    "model-pro-title":        "deepseek/deepseek-v4-flash",
+    "model-pro-fallback":     "deepseek/deepseek-chat",
+
+    "model-max-chat":         "anthropic/claude-opus-4.6",
+    "model-max-arch":         "anthropic/claude-opus-4.6",
+    "model-max-research":     "moonshotai/kimi-k2.6",
+    "model-max-vision":       "google/gemini-2.5-flash",
+    "model-max-critic":       "x-ai/grok-4",
+    "model-max-title":        "deepseek/deepseek-v4-flash",
+    "model-max-fallback":     "anthropic/claude-sonnet-4.6",
+
+    "model-enterprise-plan":  "nousresearch/hermes-3-llama-3.1-405b",
+    "model-enterprise-code":  "qwen/qwen-2.5-coder-32b-instruct",
+    "model-enterprise-research": "moonshotai/kimi-k2.6",
+    "model-enterprise-vision":"google/gemini-2.5-flash",
+    "model-enterprise-critic":"x-ai/grok-4",
+    "model-enterprise-title": "deepseek/deepseek-v4-flash",
+    "model-enterprise-fallback":"deepseek/deepseek-v4-flash",
+
+    "agent-planner":          "nousresearch/hermes-3-llama-3.1-405b",
+    "agent-researcher":       "moonshotai/kimi-k2.6",
+    "agent-coder":            "qwen/qwen-2.5-coder-32b-instruct",
+    "agent-reviewer":         "anthropic/claude-sonnet-4.6",
+    "agent-critic":           "x-ai/grok-4",
+    "agent-debate":           "x-ai/grok-4",
+    "agent-optimizer":        "deepseek/deepseek-v4-flash",
+    "agent-self-improve":     "deepseek/deepseek-v4-flash",
+    "agent-coordinator":      "nousresearch/hermes-3-llama-3.1-405b",
+
+    "model-vision":           "google/gemini-2.5-flash",
+    "model-kimi":             "moonshotai/kimi-k2.6",
+    "model-grok":             "x-ai/grok-4",
+    "model-qwen-code":        "qwen/qwen-2.5-coder-32b-instruct",
+    "model-hermes-plan":      "nousresearch/hermes-3-llama-3.1-405b",
+    "model-helper":           "deepseek/deepseek-v4-flash",
+    "title-generator-model":  "deepseek/deepseek-v4-flash",
+    "fallback-agent-model":   "deepseek/deepseek-v4-pro",
+    "fallback-ask-model":     "deepseek/deepseek-v4-pro",
+    "final-review-model":     "google/gemini-2.5-flash"
+  }
+}
+

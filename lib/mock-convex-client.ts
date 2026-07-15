@@ -1,8 +1,21 @@
 import { getStoredChats, upsertStoredChat, getStoredMessages, appendStoredMessage, deleteStoredChat } from "@/lib/utils/client-storage";
 
+// ── Global invalidation ──
+// Allows the chat component to notify the mock client when persistence
+// writes happen outside the Convex mutation path, so the sidebar
+// and other Convex-query consumers re-render with fresh data.
+let _globalNotify: (() => void) | null = null;
+export function notifyChatListChanged() { if (_globalNotify) _globalNotify(); }
+
 export class MockConvexClient {
   private updateCallbacks: Array<() => void> = [];
   notifyAll() { for (const cb of this.updateCallbacks) cb(); }
+
+  constructor() {
+    // Register this client's notifyAll as the global notifier for
+    // external persistence writes (chat.tsx → client-storage).
+    _globalNotify = () => this.notifyAll();
+  }
   setAuth(_fetchToken: unknown, onChange: (value: boolean) => void) { onChange(true); }
 
   watchQuery(_query: unknown, args?: Record<string, unknown>) {

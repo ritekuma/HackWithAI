@@ -2,9 +2,13 @@
   "allowed_origins": [
     "https://localhost:3006",
     "https://www.localhost:3006",
+    "http://localhost:3006",
+    "http://127.0.0.1:3006",
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
     "tauri://localhost"
   ],
+  "token_jwt_alg": "HS256",
   "namespaces": [
     {
       "name": "sandbox",

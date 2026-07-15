@@ -45,6 +45,19 @@ function initSchema(db: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id);
     CREATE INDEX IF NOT EXISTS idx_chats_update ON chats(update_time DESC);
+
+    CREATE TABLE IF NOT EXISTS resume_checkpoints (
+      chat_id TEXT PRIMARY KEY,
+      goal TEXT NOT NULL DEFAULT '',
+      planner_state TEXT NOT NULL DEFAULT '{}',
+      execution_journal TEXT NOT NULL DEFAULT '[]',
+      tool_outputs TEXT NOT NULL DEFAULT '{}',
+      scratchpad TEXT NOT NULL DEFAULT '',
+      working_memory TEXT NOT NULL DEFAULT '[]',
+      resume_protocol TEXT NOT NULL DEFAULT '',
+      messages_json TEXT NOT NULL DEFAULT '[]',
+      updated_at INTEGER NOT NULL
+    );
   `);
 }
 
@@ -192,6 +205,15 @@ export function appendStoredMessage(
   message: StoredMessage,
 ): void {
   const db = getDb();
+  // Ensure the chat row exists before inserting a message (FK constraint)
+  db.prepare(
+    `INSERT OR IGNORE INTO chats (id, title, update_time)
+     VALUES (?, ?, ?)`,
+  ).run(
+    chatId,
+    "New Chat",
+    Date.now(),
+  );
   db.prepare(
     `INSERT INTO messages (id, chat_id, role, parts, content, update_time, model, mode, finish_reason, usage)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -239,6 +261,56 @@ export function migrateFromLocalStorage(
   console.log(
     `[chat-db] Migrated ${localChats.length} chats with ${Object.values(localMessages).reduce((a, m) => a + m.length, 0)} messages from localStorage → SQLite`,
   );
+}
+
+// ── Durable Resume Checkpoints ────────────────────────────────────────
+
+export interface ResumeCheckpoint {
+  chatId: string;
+  goal: string;
+  plannerState: Record<string, unknown>;
+  executionJournal: Array<{ agent: string; tool: string; status: string; ts: number }>;
+  toolOutputs: Record<string, unknown>;
+  scratchpad: string;
+  workingMemory: string[];
+  resumeProtocol: string;
+  messagesJson: unknown[];
+  updatedAt: number;
+}
+
+export function saveResumeCheckpoint(checkpoint: ResumeCheckpoint): void {
+  const db = getDb();
+  db.prepare(`INSERT OR REPLACE INTO resume_checkpoints
+    (chat_id, goal, planner_state, execution_journal, tool_outputs, scratchpad, working_memory, resume_protocol, messages_json, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    checkpoint.chatId, checkpoint.goal,
+    JSON.stringify(checkpoint.plannerState),
+    JSON.stringify(checkpoint.executionJournal),
+    JSON.stringify(checkpoint.toolOutputs),
+    checkpoint.scratchpad,
+    JSON.stringify(checkpoint.workingMemory),
+    checkpoint.resumeProtocol,
+    JSON.stringify(checkpoint.messagesJson),
+    checkpoint.updatedAt,
+  );
+}
+
+export function getResumeCheckpoint(chatId: string): ResumeCheckpoint | null {
+  const db = getDb();
+  const row = db.prepare("SELECT * FROM resume_checkpoints WHERE chat_id = ?").get(chatId) as any;
+  if (!row) return null;
+  return {
+    chatId: row.chat_id,
+    goal: row.goal,
+    plannerState: safeJsonParse(row.planner_state, {}),
+    executionJournal: safeJsonParse(row.execution_journal, []),
+    toolOutputs: safeJsonParse(row.tool_outputs, {}),
+    scratchpad: row.scratchpad || "",
+    workingMemory: safeJsonParse(row.working_memory, []),
+    resumeProtocol: row.resume_protocol || "",
+    messagesJson: safeJsonParse(row.messages_json, []),
+    updatedAt: row.updated_at,
+  };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────

@@ -359,8 +359,15 @@ export const Messages = ({
                 <Shimmer className="text-sm">{`${uploadStatus.message}...`}</Shimmer>
               )}
               {shouldShowLoadingDots && (
-                <div className="bg-muted text-muted-foreground rounded-lg px-3 py-2 inline-flex items-center">
-                  <DotsSpinner size="sm" variant="primary" />
+                <div className="inline-flex items-center gap-2 px-1 py-2">
+                  <DotsSpinner size="md" variant="primary" />
+                  <Shimmer
+                    className="text-sm font-medium"
+                    duration={1.5}
+                    spread={3}
+                  >
+                    Thinking...
+                  </Shimmer>
                 </div>
               )}
             </div>
@@ -387,3 +394,5 @@ export const Messages = ({
     </FileUrlCacheProvider>
   );
 };
+
+

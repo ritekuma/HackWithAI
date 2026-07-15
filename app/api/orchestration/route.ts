@@ -1,40 +1,26 @@
-// ── Orchestration API ──
-// GET  /api/orchestration          → status
-// POST /api/orchestration          → execute task
-// GET  /api/orchestration?task=id  → task status
-// POST /api/orchestration/execute  → execute (alias)
+// ── Orchestration API (DEPRECATED — use /api/orchestration/v2) ──
+// This endpoint is retired. All requests route to the real V2 orchestrator.
 
 import { NextRequest, NextResponse } from "next/server";
-import { getOrchestrator } from "@/lib/orchestration/bootstrap";
 
 export async function GET(request: NextRequest) {
-  const engine = getOrchestrator();
-  const taskId = request.nextUrl.searchParams.get("task");
-
-  if (taskId) {
-    const task = engine.getTask(taskId);
-    if (!task) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
-    return NextResponse.json(task);
-  }
-
-  return NextResponse.json(engine.status());
+  return NextResponse.json(
+    {
+      error: "This endpoint is deprecated",
+      message: "Use /api/orchestration/v2 for the real LLM-driven multi-agent orchestrator.",
+      docs: "/api/orchestration/v2",
+    },
+    { status: 410 },
+  );
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { description, teamId } = body as { description?: string; teamId?: string };
-
-  if (!description || !teamId) {
-    return NextResponse.json(
-      { error: "Required: description, teamId" },
-      { status: 400 },
-    );
-  }
-
-  const engine = getOrchestrator();
-  const task = await engine.execute(description, teamId);
-
-  return NextResponse.json(task);
+  return NextResponse.json(
+    {
+      error: "This endpoint is deprecated",
+      message: "POST to /api/orchestration/v2 instead. This endpoint no longer executes tasks.",
+      migration: "/api/orchestration/v2",
+    },
+    { status: 410 },
+  );
 }

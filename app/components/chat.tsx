@@ -14,6 +14,7 @@ import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { FileDetails } from "@/types/file";
 import { isLocalOnlyModeClient } from "@/lib/local-only";
+import { notifyChatListChanged } from "@/lib/mock-convex-client";
 import {
   upsertStoredChat,
   setStoredMessages,
@@ -261,6 +262,9 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   // initializeStorage) with stale/empty useChat state (0 or 1 message)
   // on initial load of an existing chat.
   const persistedCountRef = useRef(0);
+  const persistedFingerprintRef = useRef("");
+  const persistTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const prevTodosRef = useRef<Todo[]>([]);
 
   // Global error reporter for diagnosing streaming crashes
   useEffect(() => {
@@ -379,10 +383,10 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   );
 
   // Convert paginated Convex messages to UI format for useChat and useAutoResume
-  // Messages come from server in descending order (newest first from pagination); reverse for chronological order
+  // Messages come in chronological order (ascending timestamps); no reversal needed
   const serverMessages: ChatMessage[] =
     effectiveMessages.results && effectiveMessages.results.length > 0
-      ? convertToUIMessages([...effectiveMessages.results].reverse() as any)
+      ? convertToUIMessages([...effectiveMessages.results] as any)
       : [];
 
   // State to prevent double-processing of queue
@@ -490,7 +494,9 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
           });
         };
 
-        const messagesToSend = isTemporaryChat
+        // Local mode: send full conversation (server has no Convex DB to retrieve from).
+        // Cloud mode: send only lastUserMessage (Convex backend retrieves history).
+        const messagesToSend = isLocalOnlyModeClient() || isTemporaryChat
           ? normalizedMessages
           : lastMessage;
         const messagesWithoutUrls = stripUrlsFromMessages(messagesToSend);
@@ -681,6 +687,26 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       } else if (!endedWithToolCall) {
         setAwaitingServerChat(false);
       }
+
+      // ── Conversation Memory Pipeline ──
+      // Extract and persist conversation facts after stream completion.
+      // This runs after both user and assistant messages are finalized.
+      if (!endedWithToolCall && isLocalOnlyModeClient() && messages.length > 0) {
+        import("@/lib/memory/conversation-extractor").then(({ processConversationMemory }) => {
+          processConversationMemory(messages as any, chatId).then((result) => {
+            if (result.stored > 0) {
+            if (process.env.NODE_ENV === "development") {
+              console.debug(`[conv-memory] stored ${result.stored} facts from ${result.extracted} extracted`);
+            }
+            }
+          }).catch(() => {});
+        }).catch(() => {});
+      }
+
+      // ── Sidebar sync: notify exactly once when stream finishes ──
+      if (!endedWithToolCall && isLocalOnlyModeClient()) {
+        notifyChatListChanged();
+      }
     },
     onError: (error) => {
       setIsAutoResuming(false);
@@ -775,11 +801,28 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       update_time: Date.now(),
     });
 
+    // ── Sidebar sync: only notify on final persistence (not streaming token deltas) ──
+    // Moved to onFinish — see notifySidebarOnFinish below.
+
     if (messages.length > 0) {
-      if (isExistingChat && messages.length <= persistedCountRef.current) return;
+      const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+      const partsLen = Array.isArray((lastAssistant as any)?.parts)
+        ? (lastAssistant as any).parts.length
+        : 0;
+      const textLen = (() => {
+        const parts = (lastAssistant as any)?.parts;
+        if (!Array.isArray(parts)) return 0;
+        let total = 0;
+        for (const p of parts) {
+          if (p && typeof p === "object" && p.type === "text" && typeof p.text === "string") total += p.text.length;
+        }
+        return total;
+      })();
+      const fingerprint = `${messages.length}|${partsLen}|${textLen}|${(lastAssistant as any)?.id ?? ""}`;
+      if (isExistingChat && fingerprint === persistedFingerprintRef.current) return;
       try {
         const storedMessages = messages
-          .filter((msg) => msg.role) // skip messages without role (prevents SQLite NOT NULL error)
+          .filter((msg) => msg.role)
           .map((msg) => ({
           _id: msg.id,
           id: msg.id,
@@ -793,6 +836,35 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
         }));
         setStoredMessages(chatId, storedMessages);
         persistedCountRef.current = messages.length;
+        persistedFingerprintRef.current = fingerprint;
+
+        // ── Durable Resume Checkpoint ──
+        // Save via API so client component doesn't import server-only chat-db.ts
+        if (isLocalOnlyModeClient()) {
+          const lastAsst = [...messages].reverse().find(m => m.role === "assistant");
+          const toolCalls = (lastAsst as any)?.parts?.filter((p: any) => p.type?.startsWith("tool-")) || [];
+          const textParts = (lastAsst as any)?.parts?.filter((p: any) => p.type === "text") || [];
+          const lastUser = [...messages].reverse().find(m => m.role === "user");
+          fetch(`/api/chats/${encodeURIComponent(chatId)}/checkpoint`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              goal: (lastUser as any)?.parts?.[0]?.text?.substring(0, 200) || "",
+              plannerState: { totalMessages: messages.length, completedTools: toolCalls.filter((t: any) => t.state === "output-available").length, pendingTools: toolCalls.filter((t: any) => t.state !== "output-available").length },
+              executionJournal: toolCalls.map((t: any) => ({ agent: "assistant", tool: t.type?.replace("tool-", "") || "", status: t.state || "unknown", ts: Date.now() })),
+              toolOutputs: Object.fromEntries(toolCalls.filter((t: any) => t.output).map((t: any) => [t.toolCallId || t.type, t.output])),
+              scratchpad: textParts.map((p: any) => (p as any).text || "").join("\n").substring(0, 1000),
+              workingMemory: textParts.map((p: any) => (p as any).text || ""),
+              messagesJson: messages.map(m => ({ role: m.role, text: (m as any).parts?.find((p: any) => p.type === "text")?.text?.substring(0, 100) || "" })),
+            }),
+          }).catch(() => {});
+        }
+
+        // Ensure final state is persisted even if streaming fd throttles prevent
+        // the last text-delta from reaching the fingerprint check. This is a
+        // safety net for the auto-scroll + sync race condition.
+        if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
       } catch (e) {
         logger.error("[chat-persist] Failed to persist messages:", e);
       }
@@ -822,31 +894,23 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
 
     // Load todos from the chat data if they exist.
     if (chatData.todos) {
-      // setTodos signature expects Todo[], so derive the new array first
       const nextTodos: Todo[] = (() => {
         const incoming: Todo[] = chatData.todos as Todo[];
         if (!incoming || incoming.length === 0) return [] as Todo[];
-
-        // Split by assistant attribution
-        const incomingAssistant: Todo[] = incoming.filter((t: Todo) =>
-          Boolean(t.sourceMessageId),
-        );
-        const incomingManual: Todo[] = incoming.filter(
-          (t: Todo) => !t.sourceMessageId,
-        );
-
-        const prevManual: Todo[] = [];
-        // We can't access previous value directly here without functional setter.
-        // Fallback: since server is source of truth, treat incoming manual todos as updates only for ids we already have.
-        // The actual merge of manual todos will be handled elsewhere when tool updates come in.
-
-        // Build manual map from previous
-        // Replace assistant todos entirely with incoming assistant todos and keep incoming manual ones as-is
+        const incomingAssistant: Todo[] = incoming.filter((t: Todo) => Boolean(t.sourceMessageId));
+        const incomingManual: Todo[] = incoming.filter((t: Todo) => !t.sourceMessageId);
         return [...incomingAssistant, ...incomingManual] as Todo[];
       })();
 
-      setTodos(nextTodos);
-    } else {
+      // Only update if todos actually changed — prevents render loop
+      const currentTodos = prevTodosRef.current;
+      const changed = nextTodos.length !== currentTodos.length ||
+        nextTodos.some((t, i) => t.id !== currentTodos[i]?.id || t.status !== currentTodos[i]?.status || t.content !== currentTodos[i]?.content);
+      if (changed) {
+        prevTodosRef.current = nextTodos;
+        setTodos(nextTodos);
+      }
+    } else if (todos.length !== 0) {
       setTodos([]);
     }
     // Server has responded for this chat id; stop suppressing not-found state
@@ -997,18 +1061,17 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
 
   // Sync Convex real-time data with useChat messages.
   // Uses statusRef (not status state) so this effect only fires when
-  // paginatedMessages.results actually changes — not on status transitions.
-  // Guards against BOTH "streaming" and "submitted" statuses to prevent
-  // Convex real-time updates from overwriting useChat's in-flight state.
-  // Without the "submitted" guard, a race condition occurs in production:
-  // Convex receives the user message (via handleInitialChatAndUserMessage)
-  // and pushes a subscription update before the first streaming chunk arrives,
-  // resetting useChat's messages and causing an empty AI response.
+  // effectiveMessages.results actually changes — not on status transitions.
+  // Guards against "streaming" and "submitted" statuses to prevent
+  // Convex/localStorage sync from overwriting useChat's in-flight stream.
   useEffect(() => {
-    if (
-      statusRef.current === "streaming" ||
-      statusRef.current === "submitted"
-    ) {
+    const currentStatus = statusRef.current;
+    if (currentStatus === "streaming" || currentStatus === "submitted") {
+      return;
+    }
+    // Also skip sync if messages just loaded (initialization) — prevents
+    // the sync from overwriting useChat state during first render hydration.
+    if (messagesRef.current.length === 0 && isExistingChat) {
       return;
     }
     if (!effectiveMessages.results || effectiveMessages.results.length === 0) {
@@ -1016,7 +1079,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     }
 
     const uiMessages = convertToUIMessages(
-      [...effectiveMessages.results].reverse() as any,
+      [...effectiveMessages.results] as any,
     );
 
     // Skip if useChat already has the same messages (same IDs, same part count).
@@ -1086,7 +1149,8 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
 
   // Handle instant scroll to bottom when first loading existing chat messages.
   // Only runs once per chat — pagination (which prepends older messages and
-  // increases messages.length) must NOT re-trigger this.
+  // increases messages.length) must NOT re-trigger this. Also guards against
+  // message replacement (sync effect) causing a false scroll trigger.
   const hasScrolledToBottomRef = useRef(false);
   useEffect(() => {
     hasScrolledToBottomRef.current = false;
@@ -1095,12 +1159,13 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     if (
       isExistingChat &&
       messages.length > 0 &&
-      !hasScrolledToBottomRef.current
+      !hasScrolledToBottomRef.current &&
+      messages.length >= (messagesRef.current?.length ?? 0)
     ) {
       hasScrolledToBottomRef.current = true;
       scrollToBottom({ instant: true, force: true });
     }
-  }, [messages.length, scrollToBottom, isExistingChat]);
+  }, [messages, scrollToBottom, isExistingChat]);
 
   // Re-arm sticky scroll whenever a new user message is appended at the tail.
   // Stop+send flows (Send Now, stop-and-send) mutate the DOM mid-stream which
@@ -1312,7 +1377,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
         effectiveMessages.results[0]?.role) return;
     const msgs = getStoredMessages(chatId);
     if (msgs.length > 0) {
-      setMessages(convertToUIMessages([...msgs].reverse() as any) as any);
+      setMessages(convertToUIMessages([...msgs] as any) as any);
     }
   }, [storageReady, isExistingChat, shouldFetchMessages, chatId, effectiveMessages.results, setMessages]);
 

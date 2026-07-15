@@ -1,1 +1,0 @@
-http://localhost:4000/api/internal?balance=9999999 (GET)  # /usr/bin/sqlmap -u http://localhost:4000/api/internal?balance=9999999 --batch --random-agent --risk=2 --level=3 --technique=BEUSTQ --output-dir /home/kali/HackWithAI/data/logs/web_recon

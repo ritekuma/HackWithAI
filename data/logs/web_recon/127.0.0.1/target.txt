@@ -1,1 +1,0 @@
-http://127.0.0.1:3006/api/chats (GET)  # /usr/bin/sqlmap -u http://127.0.0.1:3006/api/chats --batch --random-agent --risk=2 --level=3 --technique=BEUSTQ --output-dir /home/kali/HackWithAI/data/logs/web_recon

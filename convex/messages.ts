@@ -814,7 +814,10 @@ export const getMessagesByChatId = query({
       const result = await ctx.db
         .query("messages")
         .withIndex("by_chat_id", (q) => q.eq("chat_id", args.chatId))
-        .order("desc")
+        // Return in ASC (oldest-first) so the chat UI renders top-down
+        // without a client-side reverse() — which previously caused a
+        // persist-loop (save wrote display order, next read came back flipped).
+        .order("asc")
         .paginate(args.paginationOpts);
 
       // Filter hidden messages (e.g. auto-continue rows) from the page.

@@ -25,6 +25,7 @@ import {
   createFileMessagePartFromUploadedFile,
   getMaxFilesLimitForMode,
 } from "@/lib/utils/file-utils";
+import { createAISDKFilePart } from "@/lib/utils/file-part-adapter";
 import { hasRestageableLocalDesktopAttachments } from "@/lib/utils/local-attachment-messages";
 import { readStoredModelAccessCode } from "@/lib/model-access";
 
@@ -343,11 +344,13 @@ export const useChatHandlers = ({
       }
 
       try {
-        // Get file objects from uploaded files - URLs are already resolved in global state
-        const validFiles = uploadedFiles
-          .filter(isSendableUploadedFile)
-          .map(createFileMessagePartFromUploadedFile)
-          .filter((part): part is NonNullable<typeof part> => part !== null);
+        // Get file objects from uploaded files - load actual bytes for AI SDK v6 compatibility
+        const validFileParts = await Promise.all(
+          uploadedFiles
+            .filter(isSendableUploadedFile)
+            .map(createAISDKFilePart)
+        );
+        const validFiles = validFileParts.filter((part): part is NonNullable<typeof part> => part !== null);
 
         sendMessage(
           {
@@ -693,11 +696,102 @@ export const useChatHandlers = ({
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (status === "streaming") return;
     hasManuallyStoppedRef.current = false;
+
+    // ── Durable Resume: try persistent checkpoint first ──
+    let resumeContext = "";
+    try {
+      const res = await fetch(`/api/chats/${encodeURIComponent(chatId)}/checkpoint`);
+      if (res.ok) {
+        const checkpoint = await res.json();
+        if (checkpoint && checkpoint.goal) {
+          // Include saved message history from checkpoint when runtime messages are empty
+          const savedMsgs = checkpoint.messagesJson || [];
+          const messageHistory = savedMsgs.length > 0
+            ? savedMsgs.map((m: any) => `${m.role}: ${m.text}`).join("\n")
+            : "(no saved messages)";
+
+          resumeContext = [
+            "=== DURABLE RESUME PROTOCOL (from SQLite checkpoint) ===",
+            `Chat ID: ${chatId}`,
+            `Goal: ${checkpoint.goal}`,
+            `Plan: ${JSON.stringify(checkpoint.plannerState || {})}`,
+            `Execution journal: ${checkpoint.executionJournal?.length || 0} entries`,
+            `Scratchpad: ${(checkpoint.scratchpad || "").substring(0, 200)}`,
+            `Saved messages: ${messages.length > 0 ? 'present in conversation' : savedMsgs.length + ' from checkpoint'}`,
+            `Last updated: ${new Date(checkpoint.updatedAt).toISOString()}`,
+            messages.length === 0 && savedMsgs.length > 0 ? `\n=== SAVED MESSAGE HISTORY ===\n${messageHistory}\n=== END HISTORY ===` : "",
+            "",
+            "INSTRUCTIONS:",
+            "1. The conversation history above contains all prior messages.",
+            "2. The checkpoint describes what was in progress when execution stopped.",
+            "3. Continue EXACTLY from where you left off.",
+            "4. Do NOT restart completed work.",
+            "5. Do NOT ask for context — it is provided above.",
+            "=== END DURABLE RESUME ===",
+          ].filter(Boolean).join("\n");
+        }
+      }
+    } catch { resumeContext = ""; }
+
+    // ── Fallback: messages are empty? Use explicit recovery ──
+    if (!resumeContext || messages.length === 0) {
+      resumeContext = [
+        "=== RECOVERY PROTOCOL ===",
+        `Chat ID: ${chatId}`,
+        "",
+        "The conversation history may have been lost due to a browser refresh or server restart.",
+        "Check the checkpoint at /api/chats/${chatId}/checkpoint for saved state.",
+        "If no previous context is available, respond with:",
+        "\"I have no previous context for this conversation. Please describe what you need.\"",
+        "=== END RECOVERY ===",
+      ].join("\n");
+    }
+
+    // ── Runtime state build (has messages) ──
+    if (messages.length > 0) {
+      const lastAssistant = [...messages].reverse().find(m => m.role === "assistant");
+      const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+
+      const toolCalls = (lastAssistant as any)?.parts
+        ?.filter((p: any) => p.type?.startsWith("tool-"))
+        .map((p: any) => ({
+          tool: p.type?.replace("tool-", ""),
+          state: p.state,
+          input: p.input ? JSON.stringify(p.input).substring(0, 100) : "",
+          output: p.output ? JSON.stringify(p.output).substring(0, 100) : "(pending)",
+        })) || [];
+
+      const textParts = (lastAssistant as any)?.parts
+        ?.filter((p: any) => p.type === "text")
+        .map((p: any) => (p as any).text || "") || [];
+
+      const summary = textParts.join(" ").substring(0, 200);
+
+      resumeContext = [
+        "=== RESUME PROTOCOL (from runtime state) ===",
+        `Last user request: "${(lastUserMsg as any)?.parts?.[0]?.text?.substring(0, 100) || "(unknown)"}"`,
+        `Last assistant response summary: "${summary || "(tool execution in progress)"}"`,
+        toolCalls.length > 0 ? `In-progress tool calls (${toolCalls.length}):` : "",
+        ...toolCalls.map(t =>
+          `  - ${t.tool}: state=${t.state} input=${t.input} output=${t.output}`
+        ),
+        "",
+        "INSTRUCTIONS:",
+        "1. Review the conversation above to understand the task and current state.",
+        "2. Identify which tool calls completed and which are still pending.",
+        "3. Continue EXACTLY from where you left off. Do NOT restart completed work.",
+        "4. If a tool call was interrupted, check its output and decide next action.",
+        "5. Produce your next response as if the interruption never happened.",
+        `6. There are ${messages.length} prior messages. Reply in user's language.`,
+        "=== END RESUME PROTOCOL ===",
+      ].join("\n");
+    }
+
     sendMessage(
-      { text: "continue", metadata: { isAutoContinue: true } },
+      { text: resumeContext, metadata: { isAutoContinue: true } },
       {
         body: {
           mode: chatModeRef.current,

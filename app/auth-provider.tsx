@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useRef } from "react";
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components";
 import { ConvexProviderWithAuth } from "convex/react";
 import { getStorageInitPromise } from "@/lib/utils/client-storage";
-import { MockConvexClient } from "@/lib/mock-convex-client";
+import { MockConvexClient, notifyChatListChanged } from "@/lib/mock-convex-client";
 
 function useLocalAuthFallback() {
   return {

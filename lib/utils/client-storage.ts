@@ -243,6 +243,16 @@ export const cleanupExpiredDrafts = (): void => {
 // Primary storage: SQLite database accessed via /api/chats REST API
 // Secondary cache: localStorage for fast reads and offline fallback
 const LOCAL_CHATS_KEY = "hwai_local_chats";
+
+// SSR safety: localStorage only exists in the browser
+function isLocalStorageAvailable(): boolean {
+  try {
+    return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+  } catch {
+    return false;
+  }
+}
+
 const LOCAL_MSGS_PREFIX = "hwai_local_msgs_";
 const MIGRATED_KEY = "hwai_sqlite_migrated_v2";
 
@@ -463,10 +473,10 @@ async function apiAppendMessage(chatId: string, message: StoredMessage): Promise
 }
 
 async function apiSetMessages(chatId: string, messages: StoredMessage[]): Promise<void> {
+  // Optimistic localStorage (quota-safe, never throws)
+  try { syncSetMessages(chatId, messages); } catch (e) { logger.warn("[chat-storage] localStorage save failed:", e); }
+  // API save to SQLite (durable)
   try {
-    // Optimistic localStorage update
-    syncSetMessages(chatId, messages);
-
     const res = await fetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -474,13 +484,14 @@ async function apiSetMessages(chatId: string, messages: StoredMessage[]): Promis
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch {
-    logger.warn("[chat-storage] Failed to set messages to SQLite:", chatId);
+    logger.warn("[chat-storage] SQLite save failed for chat:", chatId);
   }
 }
 
 // ── Sync helpers (localStorage cache) ───────────────────────────────────
 
 function getStoredChatsSync(): StoredChat[] {
+  if (!isLocalStorageAvailable()) return [];
   try {
     const raw = localStorage.getItem(LOCAL_CHATS_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -489,13 +500,51 @@ function getStoredChatsSync(): StoredChat[] {
   }
 }
 
-function syncSetChats(chats: StoredChat[]): void {
+
+/**
+ * Quota-safe localStorage write.
+ * - Trims if payload > STORAGE_BUDGET to avoid quota errors
+ * - Catches QuotaExceededError and triggers cleanup
+ * - Returns true on success, false on total failure
+ */
+function safeSetItem(key: string, value: string): boolean {
+  if (!isLocalStorageAvailable()) return false;
+  const STORAGE_BUDGET = 4.5 * 1024 * 1024; // 4.5MB of 5MB
   try {
-    localStorage.setItem(LOCAL_CHATS_KEY, JSON.stringify(chats));
-  } catch {}
+    // If single key would exceed budget, trim value
+    if (value.length > STORAGE_BUDGET) {
+      const trimmed = value.substring(0, Math.floor(STORAGE_BUDGET * 0.9));
+      value = trimmed;
+    }
+    // Pre-check total storage
+    if (getStorageSize() + value.length > STORAGE_BUDGET) {
+      cleanupOldestChats("", 1); // just 1 oldest, not 3
+    }
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e: any) {
+    if (e?.name === "QuotaExceededError" || e?.code === 22) {
+      // Single cleanup attempt, then retry
+      cleanupOldestChats("", 1);
+      try {
+        localStorage.setItem(key, value);
+        return true;
+      } catch {
+        logger.warn(`[chat-storage] Quota persist failed for key ${key}`);
+        return false;
+      }
+    }
+    logger.error("[chat-storage] safeSetItem error:", e);
+    return false;
+  }
+}
+
+function syncSetChats(chats: StoredChat[]): void {
+  safeSetItem(LOCAL_CHATS_KEY, JSON.stringify(chats));
 }
 
 function getStoredMessagesSync(chatId: string): StoredMessage[] {
+  if (!isLocalStorageAvailable()) return [];
   try {
     const raw = localStorage.getItem(`${LOCAL_MSGS_PREFIX}${chatId}`);
     return raw ? JSON.parse(raw) : [];
@@ -504,15 +553,71 @@ function getStoredMessagesSync(chatId: string): StoredMessage[] {
   }
 }
 
+function getStorageSize(): number {
+  if (!isLocalStorageAvailable()) return 0;
+  let total = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key) total += (localStorage.getItem(key) || "").length;
+  }
+  return total;
+}
+
+function cleanupOldestChats(keepCurrent: string, removeN: number): number {
+  if (!isLocalStorageAvailable()) return 0;
+  if (removeN <= 0) return 0;
+  const entries: { key: string; ts: number }[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(LOCAL_MSGS_PREFIX)) {
+      const val = localStorage.getItem(key);
+      try {
+        const arr = JSON.parse(val || "[]");
+        const ts = Array.isArray(arr) && arr.length > 0
+          ? Number(arr[arr.length - 1]?.update_time || arr[0]?.update_time || 0)
+          : 0;
+        entries.push({ key, ts });
+      } catch { /* skip */ }
+    }
+  }
+  // Sort oldest first (lowest ts first)
+  entries.sort((a, b) => a.ts - b.ts);
+  let removed = 0;
+  for (const e of entries) {
+    if (removed >= removeN) break;
+    // Only skip if keepCurrent is provided
+    if (keepCurrent && e.key === `${LOCAL_MSGS_PREFIX}${keepCurrent}`) continue;
+    localStorage.removeItem(e.key);
+    removed++;
+  }
+  return removed;
+}
+
 function syncSetMessages(chatId: string, messages: StoredMessage[]): void {
-  try {
-    localStorage.setItem(`${LOCAL_MSGS_PREFIX}${chatId}`, JSON.stringify(messages));
-  } catch (e) {
-    logger.error("[chat-storage] Failed to serialize messages for localStorage:", e);
+  if (!isLocalStorageAvailable()) return;
+  const STORAGE_BUDGET = 4.5 * 1024 * 1024; // 4.5MB of 5MB quota
+  const payload = JSON.stringify(messages);
+  const key = `${LOCAL_MSGS_PREFIX}${chatId}`;
+
+  // Pre-check: if adding would exceed budget, cleanup oldest 1 (less aggressive)
+  if (getStorageSize() + payload.length > 4.5 * 1024 * 1024) {
+    cleanupOldestChats(chatId, 1);
+  }
+
+  if (safeSetItem(key, payload)) {
+    return;
+  }
+  // Fallback: trim to last 20 messages
+  const trimmed = messages.slice(-20);
+  if (safeSetItem(key, JSON.stringify(trimmed))) {
+    logger.warn(`[chat-storage] Wrote trimmed (${trimmed.length} msgs) after quota`);
+  } else {
+    logger.warn(`[chat-storage] Persist failed for chat ${chatId}`);
   }
 }
 
 function syncRemoveMessages(chatId: string): void {
+  if (!isLocalStorageAvailable()) return;
   try {
     localStorage.removeItem(`${LOCAL_MSGS_PREFIX}${chatId}`);
   } catch {}
@@ -544,9 +649,15 @@ export function getStoredMessages(chatId: string): StoredMessage[] {
   return getStoredMessagesSync(chatId);
 }
 
+export const MAX_STORED_MESSAGES = 50;
+
 export function setStoredMessages(chatId: string, messages: StoredMessage[]): void {
-  syncSetMessages(chatId, messages);
-  apiSetMessages(chatId, messages);
+  // Trim to last 50 messages to keep localStorage bounded (FIFO from start)
+  const trimmed = messages.length > MAX_STORED_MESSAGES
+    ? messages.slice(-MAX_STORED_MESSAGES)
+    : messages;
+  syncSetMessages(chatId, trimmed);
+  apiSetMessages(chatId, trimmed);
 }
 
 export function appendStoredMessage(chatId: string, message: StoredMessage): void {

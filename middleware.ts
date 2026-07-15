@@ -40,14 +40,20 @@ const UNAUTHENTICATED_PATHS = new Set([
   "/api/memory/search",
   "/api/missions",
   "/api/missions/metrics",
+  "/api/agents-info",
+  "/api/burp/status",
+  "/api/health",
+  "/api/knowledge-graph",
   "/api/ops",
-  "/api/memory/redis-set",
   "/api/memory/redis-get",
   "/api/memory/redis-delete",
   "/api/memory/redis-list",
   "/api/sandbox/desktop-connect",
   "/api/playwright-proxy",
   "/manifest.json",
+  "/api/agents-info-public",
+  "/api/knowledge-graph-public",
+  "/api/burp/status-public",
 ]);
 
 const DESKTOP_AUTH_HANDOFF_PATHS = new Set([

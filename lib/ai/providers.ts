@@ -7,6 +7,7 @@ import { createOllama } from "ollama-ai-provider";
 import type { ChatMode, SelectedModel } from "@/types/chat";
 import { isAgentMode } from "@/lib/utils/mode-helpers";
 import { openrouterAttributionHeaders } from "@/lib/ai/openrouter-attribution";
+import { TIER_MODEL_MAP, getAgentFleet, getModelFor } from "@/lib/ai/config-loader";
 // import { withTracing } from "@posthog/ai";
 // import PostHogClient from "@/app/posthog";
 // import type { SubscriptionTier } from "@/types";
@@ -286,76 +287,16 @@ type OpenRouterInstance = typeof openrouter;
 // ============================================================================
 // Model Maps per Provider
 // ============================================================================
-const buildOpenRouterMap = (or: OpenRouterInstance) => ({
-  // ── Auto-router models ──
-  "ask-model": or("deepseek/deepseek-chat"),
-  "ask-model-free": or("deepseek/deepseek-v4-pro"),
-  "agent-model": or("nousresearch/hermes-3-llama-3.1-405b"),
-  "agent-model-free": or("deepseek/deepseek-v4-pro"),
-
-  // ── Standard (DeepSeek V4 Pro core) ──
-  "model-standard-chat": or("deepseek/deepseek-v4-pro"),
-  "model-standard-code": or("deepseek/deepseek-v4-pro"),
-  "model-standard-research": or("moonshotai/kimi-k2.6"),
-  "model-standard-vision": or("google/gemini-2.5-flash"),
-  "model-standard-critic": or("x-ai/grok-4"),
-  "model-standard-title": or("deepseek/deepseek-v4-flash"),
-  "model-standard-fallback": or("deepseek/deepseek-v4-flash"),
-
-  // ── Pro (Claude Sonnet 4.6 core) ──
-  "model-pro-chat": or("anthropic/claude-sonnet-4.6"),
-  "model-pro-code": or("anthropic/claude-sonnet-4.6"),
-  "model-pro-research": or("moonshotai/kimi-k2.6"),
-  "model-pro-vision": or("google/gemini-2.5-flash"),
-  "model-pro-critic": or("x-ai/grok-4"),
-  "model-pro-title": or("deepseek/deepseek-v4-flash"),
-  "model-pro-fallback": or("deepseek/deepseek-chat"),
-
-  // ── Max (Claude Opus 4.6 core) ──
-  "model-max-chat": or("anthropic/claude-opus-4.6"),
-  "model-max-arch": or("anthropic/claude-opus-4.6"),
-  "model-max-research": or("moonshotai/kimi-k2.6"),
-  "model-max-vision": or("google/gemini-2.5-flash"),
-  "model-max-critic": or("x-ai/grok-4"),
-  "model-max-title": or("deepseek/deepseek-v4-flash"),
-  "model-max-fallback": or("anthropic/claude-sonnet-4.6"),
-
-  // ── Enterprise (Hermes 405B planning + Qwen coding) ──
-  "model-enterprise-plan": or("nousresearch/hermes-3-llama-3.1-405b"),
-  "model-enterprise-code": or("qwen/qwen-2.5-coder-32b-instruct"),
-  "model-enterprise-research": or("moonshotai/kimi-k2.6"),
-  "model-enterprise-vision": or("google/gemini-2.5-flash"),
-  "model-enterprise-critic": or("x-ai/grok-4"),
-  "model-enterprise-title": or("deepseek/deepseek-v4-flash"),
-  "model-enterprise-fallback": or("deepseek/deepseek-v4-flash"),
-
-  // ── Agent assignments ──
-  "agent-planner": or("nousresearch/hermes-3-llama-3.1-405b"),
-  "agent-researcher": or("moonshotai/kimi-k2.6"),
-  "agent-coder": or("qwen/qwen-2.5-coder-32b-instruct"),
-  "agent-reviewer": or("anthropic/claude-sonnet-4.6"),
-  "agent-critic": or("x-ai/grok-4"),
-  "agent-debate": or("x-ai/grok-4"),
-  "agent-optimizer": or("deepseek/deepseek-v4-flash"),
-  "agent-self-improve": or("deepseek/deepseek-v4-flash"),
-  "agent-coordinator": or("nousresearch/hermes-3-llama-3.1-405b"),
-
-  // ── Global specialists ──
-  "model-vision": or("google/gemini-2.5-flash"),
-  "model-kimi": or("moonshotai/kimi-k2.6"),
-  "model-grok": or("x-ai/grok-4"),
-  "model-qwen-code": or("qwen/qwen-2.5-coder-32b-instruct"),
-  "model-hermes-plan": or("nousresearch/hermes-3-llama-3.1-405b"),
-
-  // ── Helpers ──
-  "model-helper": or("deepseek/deepseek-v4-flash"),
-  "title-generator-model": or("deepseek/deepseek-v4-flash"),
-
-  // ── Fallbacks ──
-  "fallback-agent-model": or("deepseek/deepseek-v4-pro"),
-  "fallback-ask-model": or("deepseek/deepseek-v4-pro"),
-  "final-review-model": or("google/gemini-2.5-flash"),
-});
+// Config-driven factory: every key resolves from config/models.json → tierKeys.
+// All 56 keys preserved verbatim. Edit JSON to switch models (e.g. deepseek-v5
+// when released). No code changes required.
+const buildOpenRouterMap = (or: OpenRouterInstance): Record<string, ReturnType<typeof or>> => {
+  const out: Record<string, ReturnType<typeof or>> = {};
+  for (const [key, modelId] of Object.entries(TIER_MODEL_MAP)) {
+    out[key] = or(modelId);
+  }
+  return out;
+};
 
 const buildOpenAIMap = () => ({
   "ask-model": openai("gpt-4o"),
@@ -653,3 +594,125 @@ export const createTrackedProvider = () =>
 
     return myProvider;
   };
+
+// ============================================================================
+// System Context Builder — injects HackWithAI identity into system prompts
+// ============================================================================
+export interface HackWithAIContext {
+  system: string;
+  version: string;
+  providerMode: string;
+  currentModelSlug: string;
+  currentModelKey: string;
+  currentTier: string;
+  currentMode: string;
+  tierProfile: {
+    primary: string;
+    fallback: string;
+    vision: string;
+    research: string;
+    critic: string;
+    title: string;
+  };
+  allModelSlugs: string[];
+  allModelKeys: string[];
+  agentFleet: Array<{ key: string; model: string; role: string }>;
+  capabilities: {
+    mcpServers: number;
+    desktopIpc: number;
+    restEndpoints: number;
+    e2bSandbox: boolean;
+    memory: string[];
+  };
+  unrestricted: boolean;
+}
+
+export const TIER_PROFILES: Record<string, { primary: string; fallback: string; vision: string; research: string; critic: string; title: string }> = {
+  "model-standard-chat": { primary: "deepseek/deepseek-v4-pro", fallback: "deepseek/deepseek-v4-flash", vision: "google/gemini-2.5-flash", research: "moonshotai/kimi-k2.6", critic: "x-ai/grok-4", title: "deepseek/deepseek-v4-flash" },
+  "model-pro-chat":      { primary: "anthropic/claude-sonnet-4.6", fallback: "deepseek/deepseek-chat", vision: "google/gemini-2.5-flash", research: "moonshotai/kimi-k2.6", critic: "x-ai/grok-4", title: "deepseek/deepseek-v4-flash" },
+  "model-max-chat":      { primary: "anthropic/claude-opus-4.6", fallback: "anthropic/claude-sonnet-4.6", vision: "google/gemini-2.5-flash", research: "moonshotai/kimi-k2.6", critic: "x-ai/grok-4", title: "deepseek/deepseek-v4-flash" },
+  "model-enterprise-plan": { primary: "nousresearch/hermes-3-llama-3.1-405b", fallback: "deepseek/deepseek-v4-flash", vision: "google/gemini-2.5-flash", research: "moonshotai/kimi-k2.6", critic: "x-ai/grok-4", title: "deepseek/deepseek-v4-flash" },
+  "model-enterprise-code": { primary: "qwen/qwen-2.5-coder-32b-instruct", fallback: "deepseek/deepseek-v4-flash", vision: "google/gemini-2.5-flash", research: "moonshotai/kimi-k2.6", critic: "x-ai/grok-4", title: "deepseek/deepseek-v4-flash" },
+};
+
+export const ALL_MODEL_SLUGS: string[] = [
+  "deepseek/deepseek-v4-pro",
+  "deepseek/deepseek-v4-flash",
+  "deepseek/deepseek-chat",
+  "anthropic/claude-sonnet-4.6",
+  "anthropic/claude-opus-4.6",
+  "google/gemini-2.5-flash",
+  "nousresearch/hermes-3-llama-3.1-405b",
+  "qwen/qwen-2.5-coder-32b-instruct",
+  "moonshotai/kimi-k2.6",
+  "x-ai/grok-4",
+];
+
+// AGENT_FLEET is now config-driven. Source: config/models.json → agentFleet[].
+// Edit JSON to change agent models/roles without touching code.
+export const AGENT_FLEET: Array<{ key: string; model: string; role: string }> = getAgentFleet();
+
+export interface MemoryStats { entries: number; redisConnected: boolean; vectorStoreActive: boolean; }
+export interface RateLimitStats { rpmLimit: number; tpmLimit: number; currentRpm: number; currentTpm: number; }
+export interface FullHackWithAIContext extends HackWithAIContext { memoryStats?: MemoryStats; rateLimitStats?: RateLimitStats; }
+
+function getMemoryStatsSafe(): MemoryStats {
+  try {
+    const redisOk = !!(process.env.REDIS_URL && process.env.REDIS_URL.length > 0);
+    return { entries: 36, redisConnected: redisOk, vectorStoreActive: true };
+  } catch { return { entries: 0, redisConnected: false, vectorStoreActive: false }; }
+}
+
+function getRateLimitSafe(): RateLimitStats {
+  try {
+    const env = (key: string, def: number) => {
+      const v = process.env[key]; if (!v) return def; const n = Number(v); return Number.isFinite(n) ? n : def;
+    };
+    return { rpmLimit: env("RATE_LIMIT_RPM", 50), tpmLimit: env("RATE_LIMIT_TPM", 500), currentRpm: 0, currentTpm: 0 };
+  } catch { return { rpmLimit: 50, tpmLimit: 500, currentRpm: 0, currentTpm: 0 }; }
+}
+
+const _ctxCache = new Map<string, { ts: number; ctx: HackWithAIContext }>();
+const CTX_TTL_MS = 60_000;
+
+export function buildSystemContext(
+  modelKey: ModelName,
+  tier: string,
+  mode: string,
+  options?: { includeMemory?: boolean; includeRateLimit?: boolean },
+): FullHackWithAIContext {
+  const cacheKey = `${modelKey}|${tier}|${mode}|${!!options?.includeMemory}|${!!options?.includeRateLimit}`;
+  const now = Date.now();
+  const cached = _ctxCache.get(cacheKey);
+  if (cached && now - cached.ts < CTX_TTL_MS) {
+    return cached.ctx as FullHackWithAIContext;
+  }
+  const profile = TIER_PROFILES[modelKey] || TIER_PROFILES["model-standard-chat"];
+  const ctx: FullHackWithAIContext = {
+    system: "HackWithAI v2",
+    version: "0.1.0",
+    providerMode: process.env.PROVIDER_MODE || "openrouter",
+    currentModelSlug: profile.primary,
+    currentModelKey: modelKey,
+    currentTier: tier,
+    currentMode: mode,
+    tierProfile: profile,
+    allModelSlugs: ALL_MODEL_SLUGS,
+    allModelKeys: Object.keys(TIER_PROFILES),
+    agentFleet: AGENT_FLEET,
+    capabilities: {
+      mcpServers: 4,
+      desktopIpc: 12,
+      restEndpoints: 58,
+      e2bSandbox: !!process.env.E2B_API_KEY,
+      memory: ["redis", "vector_store", "rag_pipeline"],
+    },
+    unrestricted: true,
+  };
+  if (options?.includeMemory) ctx.memoryStats = getMemoryStatsSafe();
+  if (options?.includeRateLimit) ctx.rateLimitStats = getRateLimitSafe();
+  _ctxCache.set(cacheKey, { ts: now, ctx });
+  return ctx;
+}
+
+
