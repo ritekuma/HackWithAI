@@ -116,17 +116,19 @@ export class UnifiedMemoryRegistry {
   /** Search conversation memories stored in Redis */
   async searchConversations(query: string, limit = 10): Promise<MemoryEntry[]> {
     const keys = await this.redis.list("conv-*");
+    // Cap at 50 for performance; parallelize GET requests
+    const cappedKeys = keys.slice(0, 50);
+    if (cappedKeys.length === 0) return [];
+
+    const entries = await Promise.all(
+      cappedKeys.map(key => this.redis.get(key))
+    );
+
     const results: Array<{ entry: MemoryEntry; score: number }> = [];
-
-    // Search all conversation keys (capped at 200 for performance)
-    for (const key of keys.slice(0, 200)) {
-      const entry = await this.redis.get(key);
+    for (const entry of entries) {
       if (!entry || entry.type !== "conversation") continue;
-
       const score = this.textMatch(query, entry.content);
-      if (score > 0.1) {
-        results.push({ entry, score });
-      }
+      if (score > 0.1) results.push({ entry, score });
     }
 
     return results

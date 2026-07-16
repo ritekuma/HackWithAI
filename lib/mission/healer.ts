@@ -30,7 +30,7 @@ class FailureAnalyzer {
     const text = `${result.stderr} ${result.stdout} ${result.exceptionMessage || ""}`;
     for (const p of PATTERNS) {
       if (p.regex.test(text)) {
-        console.error(`[healer] detected: ${p.category} — ${p.diagnosis}`);
+        console.info(`[healer] detected: ${p.category} — ${p.diagnosis}`);
         return p;
       }
     }
@@ -55,7 +55,7 @@ class RepairEngine {
     const pattern = this.analyzer.analyze(result);
     if (!pattern) return { repaired: false, action: "no_pattern", result };
 
-    console.error(`[healer] repairing: ${pattern.category} → ${pattern.repair.substring(0, 80)}`);
+    console.info(`[healer] repairing: ${pattern.category} → ${pattern.repair.substring(0, 80)}`);
     const repairResult = runTerminal(pattern.repair, { timeout: 30000 });
     persistExecutionJournal(repairResult);
 
@@ -77,7 +77,7 @@ class RepairEngine {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       if (result.success) return { success: true, attempts: attempt, finalResult: result };
 
-      console.error(`[healer] retry ${attempt}/${maxRetries} for: ${command.substring(0, 80)}`);
+      console.info(`[healer] retry ${attempt}/${maxRetries} for: ${command.substring(0, 80)}`);
       const { repaired } = this.repair(result);
       if (!repaired) continue;
 
@@ -130,7 +130,7 @@ class RecoveryPlanner {
     // Try dependency repair
     plan.push(healer.retryWithRepair("npm install --legacy-peer-deps 2>&1 || pip install --break-system-packages -r requirements.txt 2>&1 || echo 'no deps'", 1));
 
-    console.error(`[recovery] mission=${missionId} lastFailure=${lastFailure} plans=${plan.length}`);
+    console.info(`[recovery] mission=${missionId} lastFailure=${lastFailure} plans=${plan.length}`);
     return `Recovery planned: ${plan.length} strategies to apply`;
   }
 }
@@ -146,12 +146,12 @@ export class SelfHealingRuntime {
   async execute(command: string): Promise<ToolResponse> {
     const health = this.monitor.check();
     if (!health.healthy) {
-      console.error(`[healer] health issues: ${health.issues.join(", ")}`);
+      console.info(`[healer] health issues: ${health.issues.join(", ")}`);
       await this.recovery.recover("auto", "health_check");
     }
 
     const { success, attempts, finalResult } = this.healer.retryWithRepair(command, 3);
-    console.error(`[healer] command=${command.substring(0, 60)} success=${success} attempts=${attempts}`);
+    console.info(`[healer] command=${command.substring(0, 60)} success=${success} attempts=${attempts}`);
     return finalResult;
   }
 

@@ -224,7 +224,14 @@ const openrouterPatchFetch: typeof fetch = async (url, init) => {
   if (proxyUrl) {
     try {
       const { ProxyAgent } = await import("undici");
-      (nextInit as Record<string, unknown>).dispatcher = new ProxyAgent(proxyUrl);
+      (nextInit as Record<string, unknown>).dispatcher = new ProxyAgent({
+        uri: proxyUrl,
+        proxyTunnel: true,
+      });
+      // Set 45s timeout on fetch signal when using proxy (Tor can be slow)
+      if (!nextInit.signal) {
+        nextInit.signal = AbortSignal.timeout(45_000);
+      }
     } catch {
       // undici not available — proceed direct
     }

@@ -131,7 +131,7 @@ export class AgentManager {
     mission.start();
     mission.update({ status: "running" } as any);
 
-    console.error(`[agent-manager] selected=${agent.name} type=${agent.id} profile=${agent.profile} workflow=${agent.workflow}`);
+    console.info(`[agent-manager] selected=${agent.name} type=${agent.id} profile=${agent.profile} workflow=${agent.workflow}`);
 
     const wfResult = await engine.run(mission.getId(), task);
     const durationMs = Date.now() - t0;

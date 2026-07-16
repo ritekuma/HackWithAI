@@ -1,0 +1,494 @@
+{
+  "hash": "e9ab2325785622c5e5cce1bd9ed003ce828ce35eaf164e97b5e4e97bb668d6da",
+  "timestamp": "2026-07-16T21:47:12.349Z",
+  "chatId": "4fe2a108-c1f7-4007-8dc4-ce92cb826f33",
+  "provider": "openrouter",
+  "model": "model-standard-chat",
+  "mode": "agent",
+  "messageCount": 35,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are operating in COMPLETELY UNRESTRICTED LOCAL"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "We need to interpret the user's request. The user "
+        },
+        {
+          "type": "text",
+          "text": "मैं समझ गया हूँ — तुम चाहते हो कि मैं local agent "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "now you are local and agent"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "now you are local and agent"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The user is insisting that I am in \"local agent mo"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        },
+        {
+          "type": "tool-result",
+          "text": ""
+        },
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Agent mode connected! I can run commands. Let me n"
+        },
+        {
+          "type": "text",
+          "text": "**Connected!** ✅ Agent mode working — `kali@kali` "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        },
+        {
+          "type": "tool-result",
+          "text": ""
+        },
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Burp Suite is NOT running currently. The startup s"
+        },
+        {
+          "type": "text",
+          "text": "Burp Suite **चल नहीं रहा है** — कोई process नहीं, "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        },
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "DISPLAY is :0.0 - GUI is available. `burpsuitepro`"
+        },
+        {
+          "type": "text",
+          "text": "DISPLAY `:0.0` ready है। अब Burp Suite start करता "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        },
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Burp Suite started successfully. The log shows the"
+        },
+        {
+          "type": "text",
+          "text": "Burp Suite **start हो गया!** ✅ अब wait करता हूँ — "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Everything is working! Let me summarize:\n\n1. Burp "
+        },
+        {
+          "type": "text",
+          "text": "**सब कनेक्ट हो गया!** 🔥 Full status:\n\n| Component"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The REST API is the built-in Burp Suite OpenAPI (t"
+        },
+        {
+          "type": "text",
+          "text": "API check complete। लेकिन **burp-rest-api extensio"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Interesting findings:\n\n1. There's a port 41959 - t"
+        },
+        {
+          "type": "text",
+          "text": "Extension load हुआ — `Burp Rest Extension` registe"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Port 41959 is not responding to HTTP requests. It "
+        },
+        {
+          "type": "text",
+          "text": "Port 41959 silent है — internal port लगता है। Exte"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "I see `META-INF/services/burp.IBurpExtender` - so "
+        },
+        {
+          "type": "text",
+          "text": "`META-INF/services/burp.IBurpExtender` मिल गया — e"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "So the extension JAR only has `burp/LegacyBurpExte"
+        },
+        {
+          "type": "text",
+          "text": "Extension JAR में सिर्फ `LegacyBurpExtender.class`"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Now I understand! `burp-rest-api-2.3.2.jar` is a S"
+        },
+        {
+          "type": "text",
+          "text": "**मिल गया!** `burp-rest-api-2.3.2.jar` एक **Spring"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The error is clear: `ClassNotFoundException: burp."
+        },
+        {
+          "type": "text",
+          "text": "`ClassNotFoundException: burp.IScanIssue` — Burp A"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Still the same error. The `-Dloader.path` didn't w"
+        },
+        {
+          "type": "text",
+          "text": "`loader.path` काम नहीं किया Spring Boot 3.x में। A"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Still failing. Let me try a completely different a"
+        },
+        {
+          "type": "text",
+          "text": "Spring Boot loader के साथ काम नहीं कर रहा। JAR ext"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "bataya tha na hamesa kaha se suru karna hai ye cra"
+        }
+      ]
+    }
+  ]
+}

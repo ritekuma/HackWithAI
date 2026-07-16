@@ -83,7 +83,7 @@ class WorkflowEngine {
       maxRetries: CFG.maxRetries, steps, missionId, startedAt: Date.now(),
     };
     this.state.set(missionId, ws);
-    console.error(`[workflow] mission=${missionId} type=${type} stages=${steps.length} retries=${CFG.maxRetries}`);
+    console.info(`[workflow] mission=${missionId} type=${type} stages=${steps.length} retries=${CFG.maxRetries}`);
     return ws;
   }
 
@@ -96,7 +96,7 @@ class WorkflowEngine {
 
     const step = ws.steps[ws.stageIndex];
     ws.currentStage = step.stage;
-    console.error(`[workflow] mission=${missionId} stage=${step.stage} "${step.name}"`);
+    console.info(`[workflow] mission=${missionId} stage=${step.stage} "${step.name}"`);
 
     if (!step.command) {
       // Skip empty commands (code steps that need AI generation)
@@ -108,10 +108,10 @@ class WorkflowEngine {
     persistExecutionJournal(result);
 
     if (CFG.autoVerify && result.exitCode !== 0) {
-      console.error(`[workflow] stage ${step.stage} FAILED exitCode=${result.exitCode} — attempting repair`);
+      console.info(`[workflow] stage ${step.stage} FAILED exitCode=${result.exitCode} — attempting repair`);
       if (CFG.autoRepair && ws.retries < ws.maxRetries) {
         const repairCmd = step.repair || step.command;
-        console.error(`[workflow] retry ${ws.retries + 1}/${ws.maxRetries}: ${repairCmd.substring(0, 80)}`);
+        console.info(`[workflow] retry ${ws.retries + 1}/${ws.maxRetries}: ${repairCmd.substring(0, 80)}`);
         const retryResult = runTerminal(repairCmd, { timeout: CFG.timeout });
         persistExecutionJournal(retryResult);
         ws.retries++;
@@ -138,7 +138,7 @@ class WorkflowEngine {
       if (done) {
         const ws = this.state.get(missionId)!;
         const success = stage === "complete" || stage === "verify";
-        console.error(`[workflow] mission=${missionId} ${success ? "COMPLETED" : "FAILED"} stages=${stages} type=${ws.type}`);
+        console.info(`[workflow] mission=${missionId} ${success ? "COMPLETED" : "FAILED"} stages=${stages} type=${ws.type}`);
         return { success, stages, message: `${success ? "Completed" : "Failed"} after ${stages} stages` };
       }
     }

@@ -1,0 +1,46 @@
+{
+  "context": {
+    "chatId": "f4",
+    "provider": "openrouter",
+    "model": "model-vision",
+    "mode": "ask"
+  },
+  "messageCount": 3,
+  "errors": null,
+  "messages": [
+    {
+      "index": 0,
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== HackWithAI v2 — Local Dev Mode (openrouter) ===\n\n=== USER MEMORY ===\n- [language] user's languag"
+        },
+        {
+          "type": "file",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Lime green."
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\n=== END ===\n\nWhat color was it?"
+        }
+      ]
+    }
+  ]
+}

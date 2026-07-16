@@ -1,0 +1,130 @@
+{
+  "hash": "4afb28100e1a7bf29fb3a7c867f8bd1a31523203f88ddb4c4ad07ef7e1e4e3e4",
+  "timestamp": "2026-07-16T18:31:40.076Z",
+  "chatId": "d4f3e5ed-30f0-4e28-a29e-de79ff938ff5",
+  "provider": "openrouter",
+  "model": "model-standard-chat",
+  "mode": "agent",
+  "messageCount": 11,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are operating in COMPLETELY UNRESTRICTED LOCAL"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The user is speaking in Hindi and English mixed. L"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Timeout. Let me try again with a simpler command."
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The terminal seems to be timing out. Let me try a "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Terminal is consistently timing out. Let me try a "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Terminal keeps timing out. This might be a system "
+        },
+        {
+          "type": "text",
+          "text": "Terminal timeout ho raha hai, but main files creat"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "तुम एजेंट मोड में हो तुम जाकर करो ना और अगर तुम्हे"
+        }
+      ]
+    }
+  ]
+}

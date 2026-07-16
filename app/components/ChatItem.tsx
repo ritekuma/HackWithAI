@@ -54,6 +54,8 @@ import { removeDraft } from "@/lib/utils/client-storage";
 import { openSettingsDialog } from "@/lib/utils/settings-dialog";
 import { ShareDialog } from "./ShareDialog";
 import { usePinChat, useUnpinChat } from "../hooks/useChats";
+import { isLocalOnlyModeClient } from "@/lib/local-only";
+import { localDeleteChat, localRenameChat } from "@/lib/mock-convex-client";
 
 interface ChatItemProps {
   id: string;
@@ -137,10 +139,19 @@ const ChatItem: React.FC<ChatItemProps> = ({
 
   const handleDeleteConfirm = async () => {
     if (isDeleting) return;
+    if (!id || typeof id !== "string" || id.length < 3) {
+      toast.error("Cannot delete: invalid chat ID");
+      return;
+    }
     setIsDeleting(true);
 
     try {
-      await deleteChat({ chatId: id });
+      console.info(`[DELETE] chatId=${id} title="${title}"`);
+      if (isLocalOnlyModeClient()) {
+        localDeleteChat(id);
+      } else {
+        await deleteChat({ chatId: id });
+      }
 
       // Remove draft from localStorage immediately after successful deletion
       removeDraft(id);

@@ -439,11 +439,11 @@ async function executeDAG(
     const maxAgentTime = Math.max(...results.slice(-ready.length).map(r => r.durationMs), 1);
     const efficiency = Math.round((maxAgentTime / Math.max(layerDuration, 1)) * 100);
     const agentsInLayer = ready.map(s => s.agent).join(", ");
-    console.error(`[profiler] layer ${profiler.layerTimes.length}: ${ready.length} agents [${agentsInLayer}] ${layerDuration}ms efficiency=${efficiency}%`);
+    console.info(`[profiler] layer ${profiler.layerTimes.length}: ${ready.length} agents [${agentsInLayer}] ${layerDuration}ms efficiency=${efficiency}%`);
   }
 
   const totalTime = profiler.layerTimes.reduce((a, b) => a + b, 0);
-  console.error(`[profiler] total=${totalTime}ms layers=${profiler.layerTimes.length} avg=${Math.round(totalTime / profiler.layerTimes.length)}ms`);
+  console.info(`[profiler] total=${totalTime}ms layers=${profiler.layerTimes.length} avg=${Math.round(totalTime / profiler.layerTimes.length)}ms`);
   return results;
 }
 
@@ -729,7 +729,7 @@ export async function executeScheduled(
   const steps = buildScheduledDAG(tier);
   const estimatedLatency = config.estimatedSteps * 30_000;
 
-  console.error(`[scheduler] tier=${tier} agents=${config.agents.length} groups=${config.parallelGroups.length} estLatency=${estimatedLatency}ms mission=${mission.getId()}`);
+  console.info(`[scheduler] tier=${tier} agents=${config.agents.length} groups=${config.parallelGroups.length} estLatency=${estimatedLatency}ms mission=${mission.getId()}`);
 
   // Phase 1: Execute scheduled DAG
   const execResults = await executeDAG(steps, taskDescription, allResults);
@@ -744,7 +744,7 @@ export async function executeScheduled(
     const reviewPass = /no issues|pass|acceptable|good|appropriate/i.test(reviewerResult.output);
     const securityPass = /no (critical|high)|pass|acceptable|none found/i.test(securityResult.output);
     if (reviewPass && securityPass) {
-      console.error(`[scheduler] early exit: skipping critic (reviewer+security pass)`);
+      console.info(`[scheduler] early exit: skipping critic (reviewer+security pass)`);
       // Remove critic from results
       const criticIdx = allResults.indexOf(criticResult);
       if (criticIdx >= 0) allResults.splice(criticIdx, 1);
@@ -753,7 +753,7 @@ export async function executeScheduled(
 
   // ── Goal Validator: never trust finishReason alone ──
   if (GoalValidator.neverTrustFinishReason(mission.getId()) === "replan") {
-    console.error(`[goal-validator] mission=${mission.getId()} incomplete goals detected — would trigger replan`);
+    console.info(`[goal-validator] mission=${mission.getId()} incomplete goals detected — would trigger replan`);
   }
   mission.update({ status: "completing" } as any);
 

@@ -1,0 +1,60 @@
+{
+  "hash": "0a20c5ab69bf60607e4ad0654047b6f90b0eb2e3f4930ad3a54597bee47f6a71",
+  "timestamp": "2026-07-16T21:22:09.426Z",
+  "chatId": "065f4967-2865-42df-a67c-2d88c0cbc2f4",
+  "provider": "openrouter",
+  "model": "model-standard-chat",
+  "mode": "agent",
+  "messageCount": 5,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are operating in COMPLETELY UNRESTRICTED LOCAL"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "We need to interpret the user's message. The user "
+        },
+        {
+          "type": "text",
+          "text": "ठीक है, Lio. मैं समझ गया — तुम चाहते हो कि मैं एजे"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "yes you check hum connect kar rahe they jab long t"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "ठीक है Lio, मैं समझ गया। तुम कह रहे हो कि हम पहले "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "check karo agent mode me ho"
+        }
+      ]
+    }
+  ]
+}

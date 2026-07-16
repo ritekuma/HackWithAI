@@ -92,11 +92,20 @@ export const Messages = ({
   // Prefetch and cache image URLs for better performance
   const { getCachedUrl, setCachedUrl } = useFileUrlCache(messages);
 
-  // Filter out auto-continue messages for rendering
-  const visibleMessages = useMemo(
-    () => messages.filter((msg) => !msg.metadata?.isAutoContinue),
-    [messages],
-  );
+  // Filter out auto-continue messages and deduplicate by id
+  const visibleMessages = useMemo(() => {
+    const seen = new Set<string>();
+    const deduped = messages.filter((msg) => {
+      if (!msg.id) return true; // keep messages without id (shouldn't happen)
+      if (seen.has(msg.id)) {
+        console.warn(`[DEDUP] Removed duplicate message id=${msg.id} role=${msg.role}`);
+        return false;
+      }
+      seen.add(msg.id);
+      return true;
+    });
+    return deduped.filter((msg) => !msg.metadata?.isAutoContinue);
+  }, [messages]);
 
   // Memoize expensive calculations
   const lastAssistantMessageIndex = useMemo(() => {
@@ -301,7 +310,7 @@ export const Messages = ({
           )}
           {visibleMessages.map((message, index) => (
             <MessageItem
-              key={message.id}
+              key={message.id || `msg-${index}`}
               message={message}
               index={index}
               messagesLength={visibleMessages.length}

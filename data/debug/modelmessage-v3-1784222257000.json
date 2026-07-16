@@ -1,0 +1,26 @@
+{
+  "context": {
+    "chatId": "v3",
+    "provider": "openrouter",
+    "model": "model-vision",
+    "mode": "ask"
+  },
+  "messageCount": 1,
+  "errors": null,
+  "messages": [
+    {
+      "index": 0,
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== HackWithAI v2 — Local Dev Mode (openrouter) ===\n\n=== USER MEMORY ===\n- [language] user's languag"
+        },
+        {
+          "type": "file",
+          "text": ""
+        }
+      ]
+    }
+  ]
+}

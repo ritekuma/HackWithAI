@@ -90,7 +90,7 @@ export async function executeMissionControlled(
   let retries = 0;
 
   mission.log("execution", `Starting mission-controlled loop, max cycles: ${maxLabel}`);
-  console.error(`[MISSION] ${mission.getId()} started — max cycles: ${maxLabel}`);
+  console.info(`[MISSION] ${mission.getId()} started — max cycles: ${maxLabel}`);
 
   const modelInstance = myProvider.languageModel(modelKey || "model-standard-chat");
 
@@ -99,7 +99,7 @@ export async function executeMissionControlled(
     reasoningCycles++;
     const cycleLabel = `${reasoningCycles}/${maxLabel}`;
 
-    console.error(`[MISSION STEP ${cycleLabel}] starting reasoning cycle`);
+    console.info(`[MISSION STEP ${cycleLabel}] starting reasoning cycle`);
     mission.log("reasoning_start", `Cycle ${cycleLabel}`);
 
     let stepToolCalls = 0;
@@ -137,11 +137,11 @@ export async function executeMissionControlled(
       stepFinishReason = stepFinishReason || (await result.finishReason) || "unknown";
     } catch (e: any) {
       errors.push(`Cycle ${reasoningCycles}: ${e.message}`);
-      console.error(`[MISSION ERROR] ${e.message}`);
+      console.info(`[MISSION ERROR] ${e.message}`);
       break;
     }
 
-    console.error(`[MISSION STEP ${cycleLabel}] finishReason=${stepFinishReason} toolCalls=${stepToolCalls} text=${stepText.length}B retries=${retries}`);
+    console.info(`[MISSION STEP ${cycleLabel}] finishReason=${stepFinishReason} toolCalls=${stepToolCalls} text=${stepText.length}B retries=${retries}`);
 
     // Phase 2: Goal Validation — only MissionController decides completion
     // Never trust model's finishReason alone
@@ -151,7 +151,7 @@ export async function executeMissionControlled(
       break;
     }
     if (goalAction === "replan") {
-      console.error(`[MISSION] goals incomplete — continuing`);
+      console.info(`[MISSION] goals incomplete — continuing`);
       mission.log("goal_validation", "Goals incomplete — continuing execution");
       continue;
     }
@@ -160,9 +160,9 @@ export async function executeMissionControlled(
     if (reasoningCycles % CRITIC_CHECK_INTERVAL === 0) {
       const progress = scorer.calculate(mission.getId());
       const criticAction = critic.evaluate(mission.getId(), progress, stepToolCalls > 0 ? "tool" : "text", "", retries > 0);
-      console.error(`[MISSION CRITIC] cycle=${reasoningCycles} action=${criticAction} progress=${progress.overall}%`);
+      console.info(`[MISSION CRITIC] cycle=${reasoningCycles} action=${criticAction} progress=${progress.overall}%`);
       if (criticAction === "abort") { mission.fail("Critic abort"); break; }
-      if (criticAction === "notify") console.error(`[MISSION CRITIC] issue detected — continuing`);
+      if (criticAction === "notify") console.info(`[MISSION CRITIC] issue detected — continuing`);
     }
 
     // Phase 4: Progress

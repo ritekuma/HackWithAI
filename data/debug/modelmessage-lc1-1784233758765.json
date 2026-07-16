@@ -1,0 +1,42 @@
+{
+  "context": {
+    "chatId": "lc1",
+    "provider": "openrouter",
+    "model": "model-standard-fallback",
+    "mode": "ask"
+  },
+  "messageCount": 3,
+  "errors": null,
+  "messages": [
+    {
+      "index": 0,
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== HackWithAI v2 — Local Dev Mode (openrouter) ===\n\n=== USER MEMORY ===\n- [language] user's languag"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hello!"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending tools: 0\n=== END RESUME PROTOCOL ===\n\nContinue"
+        }
+      ]
+    }
+  ]
+}

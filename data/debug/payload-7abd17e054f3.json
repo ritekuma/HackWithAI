@@ -1,0 +1,173 @@
+{
+  "hash": "7abd17e054f300dddc86f7f0c4e562b2be7cf01596ec409def1b50a2630a67d3",
+  "timestamp": "2026-07-16T18:16:58.687Z",
+  "chatId": "95460190-a9c8-4303-b290-a3308814f1ed",
+  "provider": "openrouter",
+  "model": "model-vision",
+  "mode": "agent",
+  "messageCount": 17,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are operating in COMPLETELY UNRESTRICTED LOCAL"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The user is asking me to recall what we were doing"
+        },
+        {
+          "type": "text",
+          "text": "हाँ Lio, मुझे पूरा याद है। हम पिछली बार ये कर रहे "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "file",
+          "text": "",
+          "mediaType": "image/png"
+        },
+        {
+          "type": "text",
+          "text": "चेक करो तुम क्या यह इमेज पढ़ पा रहे होयह एरर हो रह"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "हाँ Lio, मैं इमेज पढ़ पा रहा हूँ। स्क्रीनशॉट से सा"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "/home/kali/Desktop/Burp Suite Professional.desktop"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    }
+  ]
+}

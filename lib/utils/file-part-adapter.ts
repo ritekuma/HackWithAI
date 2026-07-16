@@ -1,7 +1,7 @@
 /**
  * AI SDK v6 compatible file part adapter.
  *
- * Image files → native AI SDK file parts (Uint8Array data)
+ * Image files → base64 data URL (JSON-safe, survives HTTP transport)
  * PDF files   → pdf-parse → text extraction → text parts
  * DOCX files  → mammoth → text extraction → text parts
  * TXT files   → File.text() → text parts
@@ -43,20 +43,32 @@ export async function createAISDKFilePart(
   const mediaType = uploadedFile.file.type || "application/octet-stream";
   const filename = uploadedFile.file.name || "untitled";
 
-  // Image → native AI SDK file part
+  // Image → base64 data URL stored as type: "image" (not "file").
+  // AI SDK v6 convertToModelMessages converts file parts with url → data,
+  // then OpenAI adapter double-encodes: data:{mime};base64,{already-prefixed-url}.
+  // Using type: "image" bypasses this bug entirely.
   if (IMAGE_TYPES.includes(mediaType)) {
-    if (uploadedFile.file instanceof File) {
+    const getDataUrl = async (blob: Blob): Promise<string | null> => {
       try {
-        const buf = await uploadedFile.file.arrayBuffer();
-        return { type: "file" as const, data: new Uint8Array(buf), filename, mediaType };
+        const buf = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return `data:${mediaType};base64,${btoa(binary)}`;
       } catch { return null; }
+    };
+
+    if (uploadedFile.file instanceof File) {
+      const dataUrl = await getDataUrl(uploadedFile.file);
+      if (dataUrl) return { type: "image" as const, image: dataUrl, mediaType };
     }
     if (uploadedFile.url) {
       try {
         const res = await fetch(uploadedFile.url);
         if (!res.ok) return null;
-        const buf = await res.arrayBuffer();
-        return { type: "file" as const, data: new Uint8Array(buf), filename, mediaType };
+        const blob = await res.blob();
+        const dataUrl = await getDataUrl(blob);
+        if (dataUrl) return { type: "image" as const, image: dataUrl, mediaType };
       } catch { return null; }
     }
     return null;

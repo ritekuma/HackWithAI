@@ -220,7 +220,7 @@ export function recoverUnfinishedJobs(): number {
   db.prepare("UPDATE runtime_jobs SET state='QUEUED' WHERE state='STARTING' AND created_at < ?")
     .run(Date.now() - 300_000);
 
-  console.error(`[runtime] worker=${_workerId} recovered ${running.length} orphaned jobs`);
+  console.info(`[runtime] worker=${_workerId} recovered ${running.length} orphaned jobs`);
   return running.length;
 }
 
@@ -251,7 +251,7 @@ export class DurableExecutionManager {
   constructor() {
     registerWorker();
     _isLeader = tryBecomeLeader();
-    console.error(`[runtime] worker=${_workerId} leader=${_isLeader}`);
+    console.info(`[runtime] worker=${_workerId} leader=${_isLeader}`);
     recoverUnfinishedJobs();
     this.timer = startHeartbeat();
     this.processLoop();

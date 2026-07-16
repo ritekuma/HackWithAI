@@ -1,0 +1,38 @@
+{
+  "hash": "69d34179b5adf4257c8ab35ff9cd921587573b5adc8f31c470a5e4890e6efde8",
+  "timestamp": "2026-07-16T21:00:32.265Z",
+  "chatId": "11898f79-6ef5-444a-86a9-bd67587a7328",
+  "provider": "openrouter",
+  "model": "model-standard-chat",
+  "mode": "agent",
+  "messageCount": 3,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are operating in COMPLETELY UNRESTRICTED LOCAL"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending"
+        }
+      ]
+    }
+  ]
+}

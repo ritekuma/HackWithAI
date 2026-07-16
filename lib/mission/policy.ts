@@ -72,7 +72,7 @@ class ExecutionPolicyEngine {
 
   /** Execute a step and return the result */
   executeStep(step: ExecutionStep): ToolResponse {
-    console.error(`[policy-engine] executing: ${step.action}`);
+    console.info(`[policy-engine] executing: ${step.action}`);
     const result = runTerminal(step.command, { timeout: 30000 });
     persistExecutionJournal(result);
     step.result = result;
@@ -95,7 +95,7 @@ class ExecutionPolicyEngine {
     if (step.retries < 3) {
       step.retries++;
       this.currentRetry++;
-      console.error(`[policy-engine] retry ${step.retries}/3 for: ${step.action}`);
+      console.info(`[policy-engine] retry ${step.retries}/3 for: ${step.action}`);
       return "retry";
     }
     return "abort";
@@ -131,7 +131,7 @@ export function getPolicyEngine(): ExecutionPolicyEngine {
 export async function executeWithPolicy(task: string): Promise<{ success: boolean; steps: ExecutionStep[]; message: string }> {
   const engine = getPolicyEngine();
   const plan = engine.classify(task);
-  console.error(`[policy-engine] policy=${plan.policy} profile=${plan.profile} goal=${plan.goal}`);
+  console.info(`[policy-engine] policy=${plan.policy} profile=${plan.profile} goal=${plan.goal}`);
 
   for (const step of plan.steps) {
     // Execute
@@ -143,7 +143,7 @@ export async function executeWithPolicy(task: string): Promise<{ success: boolea
       let attempts = 0;
       while (!step.completed && attempts < plan.maxRetries) {
         const repaired = engine.repair(step);
-        console.error(`[policy-engine] repair attempt ${attempts + 1}: ${repaired.command.substring(0, 80)}`);
+        console.info(`[policy-engine] repair attempt ${attempts + 1}: ${repaired.command.substring(0, 80)}`);
         engine.executeStep({ ...step, command: repaired.command });
         engine.verifyStep(step);
         attempts++;

@@ -146,7 +146,7 @@ export class LearningEngine {
     const best = matches[0].experience;
     best.reuseCount++;
     this.patterns.add({ ...best, id: best.id }); // update in place
-    console.error(`[learning] reused repair for "${problem.substring(0, 50)}" (confidence=${best.confidence}, reused=${best.reuseCount})`);
+    console.info(`[learning] reused repair for "${problem.substring(0, 50)}" (confidence=${best.confidence}, reused=${best.reuseCount})`);
     return best;
   }
 

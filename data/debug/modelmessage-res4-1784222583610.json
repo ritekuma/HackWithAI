@@ -1,0 +1,46 @@
+{
+  "context": {
+    "chatId": "res4",
+    "provider": "openrouter",
+    "model": "model-vision",
+    "mode": "ask"
+  },
+  "messageCount": 3,
+  "errors": null,
+  "messages": [
+    {
+      "index": 0,
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== HackWithAI v2 — Local Dev Mode (openrouter) ===\n\n=== USER MEMORY ===\n- [language] English\n- [lan"
+        },
+        {
+          "type": "file",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "That is a lime green pixel."
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nLast user request: \"What is this?\"\nLast assistant response: \"That is a lime "
+        }
+      ]
+    }
+  ]
+}

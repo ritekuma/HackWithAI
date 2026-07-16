@@ -14,6 +14,7 @@ import type { ChatMode, SelectedModel } from "@/types/chat";
 import { getMemory } from "@/lib/memory";
 import type { MemoryEntry, KnowledgeEntity } from "@/lib/memory";
 import { getRelevantMemories } from "@/lib/memory/user-memory";
+import { getProjectContext } from "@/lib/memory/project-memory";
 
 // ── Constants ──────────────────────────────────────────────────────
 
@@ -30,7 +31,7 @@ const MAX_KNOWLEDGE_ENTITIES = 8;
 const MAX_MEMORY_CONTENT_CHARS = 500;
 
 // ── Phase 1.2 Validation: always log compact block ──────────────────
-function vlog(msg: string) { console.error(`[V12] ${msg}`); }
+function vlog(msg: string) { console.debug(`[V12] ${msg}`); }
 
 // ── Forensic Instrumentation ────────────────────────────────────────
 // Logs exact context reaching the model for Phase 1.1 validation.
@@ -42,9 +43,9 @@ function fmtx(msg: string, data?: unknown) {
   if (!FORENSIC) return;
   if (data !== undefined) {
     const s = typeof data === "string" ? data : JSON.stringify(data).substring(0, 500);
-    console.error(`[FMTX] ${msg}`, s);
+    console.debug(`[FMTX] ${msg}`, s);
   } else {
-    console.error(`[FMTX] ${msg}`);
+    console.debug(`[FMTX] ${msg}`);
   }
 }
 // ── End Forensic ─────────────────────────────────────────────────────
@@ -56,16 +57,13 @@ export interface MemoryContext {
 }
 
 export interface BuiltContext {
-  /** The identity block that gets prepended to the first user message */
   identityBlock: string;
-  /** The memory+knowledge context block (only in agent mode) */
   memoryContext: MemoryContext | null;
-  /** The messages to actually send — recent window only */
   messages: UIMessage[];
-  /** Whether messages were truncated */
   wasTruncated: boolean;
-  /** How many older messages were replaced by memory */
   truncatedCount: number;
+  /** Estimated total token count (chars/4) */
+  estimatedTokens: number;
 }
 
 // ── Memory Retrieval ────────────────────────────────────────────────
@@ -229,7 +227,7 @@ function extractConversationCompact(
  * based on the current user query and recent conversation context.
  */
 export async function buildContext(options: {
-  messages: UIMessage[];
+  messages: any[];
   mode: ChatMode;
   selectedModel: SelectedModel;
   systemPrompt: string;
@@ -249,14 +247,11 @@ export async function buildContext(options: {
     : messages;
   const truncatedCount = Math.max(0, messages.length - windowSize);
 
+  // ── Compact conversation summary from older messages ──
+  let conversationCompact: string | null = null;
   if (truncatedCount > 0) {
-    const oldestKept = recentMessages[0];
-    const oldestKeptId = (oldestKept as any)?.id?.substring(0, 8) || "?";
-    const oldestText = oldestKept?.parts
-      ?.filter((p: any) => p.type === "text")
-      .map((p: any) => (p.text || "").substring(0, 50))
-      .join(" | ") || "(no text)";
-    fmtx(`TRUNCATED: dropped ${truncatedCount} messages, keeping ${recentMessages.length}. Oldest kept: id=${oldestKeptId} role=${oldestKept?.role} text="${oldestText}"`);
+    const truncatedMsgs = messages.slice(0, truncatedCount);
+    conversationCompact = extractConversationCompact(truncatedMsgs as any[] as UIMessage[], 3000);
   }
 
   // Build identity block
@@ -268,9 +263,6 @@ export async function buildContext(options: {
   // Always search conversation memories — even when messages fit
   // within the window, Redis may contain facts from earlier exchanges.
   let memoryContext: MemoryContext | null = null;
-
-  // ── User Memory (long-term, cross-chat facts) ──────────────────
-  const userMemFacts = getRelevantMemories(searchQuery);
 
   // Build a search query from the messages
   const searchQuery = messages
@@ -284,18 +276,27 @@ export async function buildContext(options: {
     .join(" ")
     .substring(0, 800);
 
+  // ── User Memory (long-term, cross-chat facts) ──────────────────
+  const userMemFacts = getRelevantMemories(searchQuery);
+
+
   // Search conversation memories from UnifiedMemoryRegistry
+  // Only in agent mode — ask mode doesn't need semantic history search
   let convMemories: MemoryEntry[] = [];
-  try {
-    const memory = getMemory();
-    convMemories = await memory.searchConversations(searchQuery, 15);
-    fmtx(`CONV-MEMORY-RESULTS: ${convMemories.length} entries`);
-  } catch (e) {
-    fmtx(`CONV-MEMORY-ERROR: ${(e as Error).message}`);
+  if (isAgentMode) {
+    try {
+      const memory = getMemory();
+      convMemories = await memory.searchConversations(searchQuery, 10);
+      fmtx(`CONV-MEMORY-RESULTS: ${convMemories.length} entries`);
+    } catch (e) {
+      fmtx(`CONV-MEMORY-ERROR: ${(e as Error).message}`);
+    }
   }
 
-  // Search existing experience/knowledge stores
-  const { memories: expMemories, knowledge } = await retrieveMemory(searchQuery);
+  // Search existing experience/knowledge stores (agent mode only)
+  const { memories: expMemories, knowledge } = isAgentMode
+    ? await retrieveMemory(searchQuery)
+    : { memories: [], knowledge: [] as KnowledgeEntity[] };
 
   // Format retrieved memories for the model
   const memoryLines: string[] = [];
@@ -331,24 +332,20 @@ export async function buildContext(options: {
   memoryContext = {
     relevantMemories: [
       ...(userMemFacts.length > 0 ? [userMemFacts.join("\n")] : []),
+      getProjectContext(),
+      ...(conversationCompact ? [conversationCompact] : []),
       ...(memoryLines.length > 0 ? [memoryLines.join("\n")] : []),
     ],
     knowledgeContext: knowledgeLines,
-    conversationSummary: null,
+    conversationSummary: conversationCompact,
   };
 
-  if (truncatedCount > 0) {
-    fmtx(`TRUNCATED: dropped ${truncatedCount} messages, keeping ${recentMessages.length}`);
-  } else {
-    fmtx(`MEMORY: all ${messages.length} msgs within window`);
-  }
-
-  // Estimate token counts
+  // ── Token estimation ────────────────────────────────────────────
   const estimateChars = (arr: any[]) =>
     arr.reduce((s: number, m: any) =>
       s + (Array.isArray(m.parts)
         ? m.parts.reduce((t: number, p: any) =>
-            t + (p.text ? p.text.length : JSON.stringify(p).length), 0)
+            t + (p.text ? p.text.length : 0), 0)
         : 0), 0);
 
   const identityChars = identityBlock.length;
@@ -357,7 +354,8 @@ export async function buildContext(options: {
   const totalChars = identityChars + memoryChars + msgChars;
   const estTokens = Math.ceil(totalChars / 4);
 
-  fmtx(`SIZE: identity=${identityChars}c memory=${memoryChars}c msgs=${msgChars}c total=${totalChars}c ~${estTokens} tokens (${recentMessages.length} msgs)`);
+  const diag = `[DIAG] total=${totalChars}c ~${estTokens}t | identity=${identityChars}c | mem=${memoryChars}c | msgs=${msgChars}c (${recentMessages.length}/${messages.length}${truncatedCount > 0 ? ` +${truncatedCount} summarized` : ""})`;
+  console.info(diag);
 
   return {
     identityBlock,
@@ -365,6 +363,7 @@ export async function buildContext(options: {
     messages: recentMessages,
     wasTruncated: truncatedCount > 0,
     truncatedCount,
+    estimatedTokens: estTokens,
   };
 }
 
@@ -423,8 +422,8 @@ export function injectContextIntoMessages(
 
   const finalText = (updatedMsg.parts[0] as any).text;
   // Phase 1.2: dump compact block for inspection
-  console.error("[V12-COMPACT] chars=" + finalText.length);
-  console.error("[V12-BLOCK] " + finalText.substring(0, 3000));
+  console.debug("[V12-COMPACT] chars=" + finalText.length);
+  console.debug("[V12-BLOCK] " + finalText.substring(0, 3000));
 
   // Replace the message at firstUserIdx with the updated one
   const result = [...messages];

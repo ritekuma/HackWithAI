@@ -101,7 +101,7 @@ function loadConfig(): ModelsConfig {
       autoMode: { enabled: false, description: "", rules: [] },
       tierKeys: {
         "ask-model": "deepseek/deepseek-chat",
-        "agent-model": "nousresearch/hermes-3-llama-3.1-405b",
+        "agent-model": "deepseek/deepseek-v4-pro",
         "model-vision": "google/gemini-2.5-flash",
         "model-helper": "deepseek/deepseek-v4-flash",
         "title-generator-model": "deepseek/deepseek-v4-flash",

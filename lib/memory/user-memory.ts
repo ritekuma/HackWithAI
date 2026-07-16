@@ -106,7 +106,7 @@ function isSafe(fact: string): boolean {
 }
 
 // ── Forensic logging ──────────────────────────────────────────────────
-function flog(msg: string) { console.error(`[UMEM] ${msg}`); }
+function flog(msg: string) { console.debug(`[UMEM] ${msg}`); }
 
 // ── API ───────────────────────────────────────────────────────────────
 

@@ -14,6 +14,7 @@ import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { FileDetails } from "@/types/file";
 import { isLocalOnlyModeClient } from "@/lib/local-only";
+import { getExecutionConfig, restoreMode, type ExecutionConfig } from "@/lib/memory/execution-mode";
 import { notifyChatListChanged } from "@/lib/mock-convex-client";
 import {
   upsertStoredChat,
@@ -265,6 +266,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   const persistedFingerprintRef = useRef("");
   const persistTimerRef = useRef<NodeJS.Timeout | null>(null);
   const prevTodosRef = useRef<Todo[]>([]);
+  const recoveryGuardRef = useRef(false); // prevent duplicate recovery/retry
 
   // Global error reporter for diagnosing streaming crashes
   useEffect(() => {
@@ -334,6 +336,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   // Sync local chat state from URL (single source of truth)
   useEffect(() => {
     setStreamedTitle(null);
+    recoveryGuardRef.current = false; // reset recovery guard on navigation
     if (routeChatId) {
       setChatId(routeChatId);
       setIsExistingChat(true);
@@ -482,6 +485,10 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
             if (!msg.parts || msg.parts.length === 0) return msg;
             const strippedParts = msg.parts.map((part: any) => {
               if (part.type === "file" && "url" in part) {
+                // Keep data URLs (inline base64) but strip external URLs
+                if (typeof part.url === "string" && part.url.startsWith("data:")) {
+                  return part;
+                }
                 const { url, ...partWithoutUrl } = part;
                 return partWithoutUrl;
               }
@@ -712,6 +719,17 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       setIsAutoResuming(false);
       setAwaitingServerChat(false);
       dispatchStreaming({ type: "RESET_ON_FINISH" });
+
+      // ── SDK Recovery: force status reset after unrecoverable exception ──
+      // After an activeResponse.state TypeError, the SDK may be left in a
+      // broken state. The next sendMessage/regenerate will work because the
+      // SDK's makeRequest resets to "submitted" at the start. But if the UI
+      // guards against non-"ready" status, we need to force-clear it here.
+      if (statusRef.current === "error" || statusRef.current === "streaming") {
+        // The SDK will internally resolve to "error" → next sendMessage resets
+        console.info("[RECOVERY] SDK error state detected — next sendMessage will recover");
+      }
+
       if (error instanceof ChatSDKError) {
         const errorMessage =
           typeof error.cause === "string" ? error.cause : error.message;
@@ -723,6 +741,124 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       }
     },
   });
+
+  const durableCheckpointRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Durable Recovery: periodic checkpoint save during streaming ──
+  const saveCheckpoint = useCallback(() => {
+    if (!isLocalOnlyModeClient() || messages.length === 0) return;
+    const lastAsst = [...messages].reverse().find(m => m.role === "assistant");
+    const toolCalls = (lastAsst as any)?.parts?.filter((p: any) => p.type?.startsWith("tool-")) || [];
+    const textParts = (lastAsst as any)?.parts?.filter((p: any) => p.type === "text") || [];
+    const lastUser = [...messages].reverse().find(m => m.role === "user");
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/checkpoint`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        goal: (lastUser as any)?.parts?.[0]?.text?.substring(0, 200) || "",
+        plannerState: { totalMessages: messages.length, lastMsgRole: messages[messages.length-1]?.role, completedTools: toolCalls.filter((t: any) => t.state === "output-available").length, pendingTools: toolCalls.filter((t: any) => t.state !== "output-available").length },
+        executionJournal: toolCalls.map((t: any) => ({ agent: "assistant", tool: t.type?.replace("tool-", "") || "", status: t.state || "unknown", ts: Date.now() })),
+        toolOutputs: Object.fromEntries(toolCalls.filter((t: any) => t.output).map((t: any) => [t.toolCallId || t.type, t.output])),
+        scratchpad: textParts.map((p: any) => (p as any).text || "").join("\n").substring(0, 1000),
+        workingMemory: textParts.map((p: any) => (p as any).text || ""),
+        messagesJson: messages.map(m => ({ role: m.role, text: (m as any).parts?.find((p: any) => p.type === "text")?.text?.substring(0, 100) || "" })),
+      }),
+    }).catch(() => {});
+  }, [chatId, messages]);
+
+  // Start periodic checkpoint save during streaming; stop when idle
+  useEffect(() => {
+    if (status === "streaming" || status === "submitted") {
+      if (!durableCheckpointRef.current) {
+        saveCheckpoint();
+        durableCheckpointRef.current = setInterval(saveCheckpoint, 30_000);
+      }
+    } else {
+      if (durableCheckpointRef.current) {
+        clearInterval(durableCheckpointRef.current);
+        durableCheckpointRef.current = null;
+        saveCheckpoint();
+      }
+    }
+    return () => {
+      if (durableCheckpointRef.current) {
+        clearInterval(durableCheckpointRef.current);
+        durableCheckpointRef.current = null;
+      }
+    };
+  }, [status, saveCheckpoint]);
+
+  // ── Stream Lifecycle: stop active stream on chat switch / unmount ──
+  // Prevents AI SDK activeResponse.state crash when Chat instance is replaced
+  useEffect(() => {
+    return () => {
+      // On unmount or chatId change, abort any active stream
+      if (status === "streaming" || status === "submitted") {
+        stop();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId]);
+
+  // ── Durable Recovery: auto-resume interrupted sessions on startup ──
+  // Only fires ONCE per chat. Guarded against message count changes and concurrent sends.
+  useEffect(() => {
+    if (!isLocalOnlyModeClient()) return;
+    if (!isExistingChat || messages.length === 0) return;
+    if (status !== "ready" && status !== "error") return;
+    if (recoveryGuardRef.current) return;
+    // Check if the conversation was interrupted: last message is user (unanswered)
+    const lastMsg = messages[messages.length - 1];
+    const wasInterrupted = lastMsg?.role === "user" && messages.length > 0;
+    if (!wasInterrupted) return;
+
+    recoveryGuardRef.current = true;
+    // Verify a durable checkpoint exists (confirms this was an active session)
+    fetch(`/api/chats/${encodeURIComponent(chatId)}/checkpoint`)
+      .then(r => r.ok ? r.json() : null)
+      .then(checkpoint => {
+        if (checkpoint?.goal && checkpoint.updatedAt > Date.now() - 3600_000) {
+          console.info(`[RECOVERY] Interrupted session detected: ${checkpoint.goal?.substring(0, 80)}`);
+          console.info(`[RECOVERY] Calling handleContinue — chatId=${chatId} status=${status} msgs=${messages.length}`);
+          handleContinue();
+        }
+      }).catch(() => { recoveryGuardRef.current = false; });
+  }, [isExistingChat, chatId, status]);
+
+  // ── Durable Tasks: detect running agent tasks on chat load ──
+  useEffect(() => {
+    if (!isLocalOnlyModeClient() || !isExistingChat) return;
+    fetch(`/api/tasks?chatId=${encodeURIComponent(chatId)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.tasks?.length > 0) {
+          console.info(`[TASKS] ${data.tasks.length} running tasks for chat ${chatId}`);
+        }
+      }).catch(() => {});
+  }, [isExistingChat, chatId]);
+
+  // ── Project Recovery: detect unfinished project tasks on startup ──
+  useEffect(() => {
+    if (!isLocalOnlyModeClient()) return;
+    if (isExistingChat) return; // only check on initial new-chat load
+    fetch("/api/project/state?format=recovery")
+      .then(r => r.json())
+      .then((info: { hasUnfinishedWork: boolean; completionPct: number; summary: string; activeTask: any }) => {
+        if (info?.hasUnfinishedWork) {
+          console.info(`[PROJECT-RECOVERY] ${info.completionPct}% complete | ${info.summary}`);
+        }
+      }).catch(() => {});
+  }, []);
+
+  // ── Execution Mode Lock: restore and persist across restarts ──
+  const [execConfig, setExecConfig] = useState<ExecutionConfig>(() => getExecutionConfig());
+  useEffect(() => {
+    const restored = restoreMode();
+    if (restored) {
+      setExecConfig(restored);
+      console.info(`[MODE-LOCK] Restored: ${restored.mode} | chat=${restored.chatProvider} | exec=${restored.executionProvider}`);
+    }
+  }, []);
 
   // Keep refs in sync so closures read latest values
   setMessagesRef.current = setMessages;
@@ -801,8 +937,12 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       update_time: Date.now(),
     });
 
-    // ── Sidebar sync: only notify on final persistence (not streaming token deltas) ──
-    // Moved to onFinish — see notifySidebarOnFinish below.
+    // ── Sidebar sync: update on every persisted message batch.
+    // onFinish is the primary trigger; this is the fallback for
+    // streaming scenarios where onFinish may be deferred (tool calls).
+    if (isLocalOnlyModeClient() && messages.length > 0) {
+      notifyChatListChanged();
+    }
 
     if (messages.length > 0) {
       const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");

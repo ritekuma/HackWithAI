@@ -1,0 +1,38 @@
+{
+  "hash": "315a3f8157c8ab2ebc2e948694d9bf261ffb6dc4c2b78a1af3521d42d1024f00",
+  "timestamp": "2026-07-16T20:29:18.765Z",
+  "chatId": "lc1",
+  "provider": "openrouter",
+  "model": "model-standard-fallback",
+  "mode": "ask",
+  "messageCount": 3,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== HackWithAI v2 — Local Dev Mode (openrouter) =="
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hello!"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending"
+        }
+      ]
+    }
+  ]
+}

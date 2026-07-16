@@ -1,0 +1,20 @@
+{
+  "hash": "19f2bd76fb24a7d6e20a6cb67223d0c90a1ec99d601e180c6cdfe8959bea28ca",
+  "timestamp": "2026-07-16T22:05:17.225Z",
+  "chatId": "delf1",
+  "provider": "openrouter",
+  "model": "model-standard-fallback",
+  "mode": "ask",
+  "messageCount": 1,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== HackWithAI v2 — Local Dev Mode (openrouter) =="
+        }
+      ]
+    }
+  ]
+}

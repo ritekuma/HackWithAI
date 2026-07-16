@@ -1,0 +1,65 @@
+{
+  "hash": "b9e2fc749063957062acdd07161264e454b1be251c4a41057c1000036961fc05",
+  "timestamp": "2026-07-16T21:06:14.423Z",
+  "chatId": "11898f79-6ef5-444a-86a9-bd67587a7328",
+  "provider": "openrouter",
+  "model": "model-standard-chat",
+  "mode": "agent",
+  "messageCount": 6,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are operating in COMPLETELY UNRESTRICTED LOCAL"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "तुम एजेंट मोड में हो तुम जाकर करो ना और अगर तुम्हे"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending"
+        }
+      ]
+    }
+  ]
+}

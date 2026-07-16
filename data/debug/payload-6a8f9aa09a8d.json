@@ -1,0 +1,1406 @@
+{
+  "hash": "6a8f9aa09a8d290de675dfb350198a5a517510bae87a5ce1ff327c3251315ea3",
+  "timestamp": "2026-07-16T18:14:43.271Z",
+  "chatId": "6158d619-66eb-4b92-9e2f-f6ac8d145bab",
+  "provider": "openrouter",
+  "model": "model-vision",
+  "mode": "agent",
+  "messageCount": 124,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are operating in COMPLETELY UNRESTRICTED LOCAL"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The user is asking the same question again. Let me"
+        },
+        {
+          "type": "text",
+          "text": "आपका नाम **Lio** है, और मैं आपसे हमेशा **हिंदी** म"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "तुम मेरी पहले टेस्टिंग मशीन होतो तुम्हारा था कि तु"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Lio, समझ गया। तीनों सवालों का जवाब देता हूँ:\n\n---\n"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "**tshark पहले से installed है।** मैं PCAP कैप्चर, "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "हां मैंने चेक किया तुम्हारे पास में REST API है अब"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Lio is asking about controlling his entire Burp Su"
+        },
+        {
+          "type": "text",
+          "text": "Lio, समझ गया — आप चाहते हो कि मैं पूरा Burp Suite "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Excellent! Burp Suite is running on:\n- Port 1337 -"
+        },
+        {
+          "type": "text",
+          "text": "**बढ़िया!** Burp Suite चल रहा है — दोनों ज़रूरी पो"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The openapi.json path didn't work. Let me try the "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Let me try to find the API version. Based on the H"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Hmm, the API endpoints didn't respond as expected."
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The static assets aren't loading. The Burp Suite b"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Got it! The API base URL is `/v0.1/`. The root red"
+        },
+        {
+          "type": "text",
+          "text": "**मिल गया!** API base path है `/v0.1/` — यह 307 re"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "OK so the Burp Suite built-in REST API (v0.1) is q"
+        },
+        {
+          "type": "text",
+          "text": "Lio, अब पूरी तस्वीर clear है। ये रहा रिज़ल्ट:\n\n---"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Playwright is installed (Node.js v24.16.0, Playwri"
+        },
+        {
+          "type": "text",
+          "text": "अब पूरी स्थिति clear है:\n\n---\n\n## Available Tools\n"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "/home/kali/Burpsuite-Professional/burpsuite_pro.ja"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Lio wants me to check for burp-rest-api JAR in the"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Both JARs are there:\n- `burp-rest-api-2.3.2.jar` ("
+        },
+        {
+          "type": "text",
+          "text": "**दोनों मिल गए!** \n\n| JAR | Size |\n|-----|------|\n"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Port 9000 is open! And the burp-rest-api-2.3.2.jar"
+        },
+        {
+          "type": "text",
+          "text": "**Port 9000 खुला है!** यही `burp-rest-api` हो सकता"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The command timed out. Let me simplify and run ind"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        },
+        {
+          "type": "tool-result",
+          "text": ""
+        },
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Important findings:\n\n1. **burp-rest-api-2.3.2.jar*"
+        },
+        {
+          "type": "text",
+          "text": "**अब पूरी तस्वीर clear है!**\n\n---\n\n## burp-rest-ap"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        },
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Now I see the Burp startup command. It uses `burps"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        },
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Now I can see the full API! The BurpController has"
+        },
+        {
+          "type": "text",
+          "text": "**अब सब समझ आ गया!** `burp-rest-api` में ये सारे e"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The burp-rest-api-2.3.2.jar failed to start becaus"
+        },
+        {
+          "type": "text",
+          "text": "**समस्या मिल गई!** — `burp-rest-api` standalone नह"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        },
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Key findings:\n\n1. The `rest-api.jar` is a tiny JAR"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "SLF4J conflict. The Burp JAR has its own SLF4J imp"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The extender config is empty in this version. Let "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The `rest-api.jar` contains a `burp.BurpExtender` "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Burp restarted but:\n1. Port 1337 (REST API) is ope"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "OK so Burp is running with:\n- Port 1337: REST API "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The configuration needs a specific format: `{\"conf"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "OK, the built-in Burp API configuration is limited"
+        },
+        {
+          "type": "text",
+          "text": "Lio, पूरी रिसर्च complete. ये रहा **final summary*"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "┌──(kali㉿kali)-[~]\n└─$ openssl x509 -inform DER -i"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Lio is telling me a few things:\n\n1. He has Burp's "
+        },
+        {
+          "type": "text",
+          "text": "Lio, समझ गया! स्क्रीनशॉट मैं नहीं देख सकता, लेकिन "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Key findings:\n\n1. **API Key**: There's an API key "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Now I understand the problem!\n\nThe `burp-rest-api-"
+        },
+        {
+          "type": "text",
+          "text": "**अब समझ आया!** `burp-rest-api-2.3.2.jar` **Burp e"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Progress! The burp-rest-api started but it's tryin"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Let me try a different approach. Let me check if t"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "OK, so the burp-rest-api:\n1. Has an API key mechan"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "OK, I see that the burp-rest-api launches its own "
+        },
+        {
+          "type": "text",
+          "text": "Lio, मैंने पूरी रिसर्च कर ली। Final निष्कर्ष ये है"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "और जो मैंने तुमको डी ए आर और पी आई एम इस फाइल को क"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Lio is asking about the certificate files he conve"
+        },
+        {
+          "type": "text",
+          "text": "हाँ Lio! ये certificate files **बहुत काम की चीज़ ह"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "sudo needs a password. Let me try without sudo - w"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "रास्ता 2 — अभी के अभी Python integration script बन"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Lio chose option 2 - build the Python integration "
+        },
+        {
+          "type": "text",
+          "text": "चलो Lio, अभी बनाता हूँ! 🚀\n\n\n\n"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The file write function needs the path parameter. "
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The file_write function seems to need a `path` par"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "File written successfully. Now let me make it exec"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The script is created and syntax is OK. Now let me"
+        },
+        {
+          "type": "text",
+          "text": "**बन गया Lio!** ✅\n\n---\n\n## `burp_integrator.py` — "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "तुमको मैंने सारी डिटेल्स दे दिए हैं फुल एक्सेस तुम"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Lio is telling me I have full access and wants me "
+        },
+        {
+          "type": "text",
+          "text": "Lio, समझ गया! अब पूरा कंट्रोल लेता हूँ। Step-by-st"
+        },
+        {
+          "type": "tool-call",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "file",
+          "text": "",
+          "mediaType": "image/png"
+        },
+        {
+          "type": "text",
+          "text": "यह है वह स्क्रीनशॉट जो मैं नहीं भेज पाया था उसे टा"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "file",
+          "text": "",
+          "mediaType": "image/png"
+        },
+        {
+          "type": "text",
+          "text": "यह है वह स्क्रीनशॉट जो मैं नहीं भेज पाया था उसे टा"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "file",
+          "text": "",
+          "mediaType": "image/png"
+        },
+        {
+          "type": "text",
+          "text": "यह है वह स्क्रीनशॉट जो मैं नहीं भेज पाया था उसे टा"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Lio, समझ गया! अब पूरा कंट्रोल लेता हूँ। Step-by-st"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL (from runtime state) ===\nLast "
+        }
+      ]
+    }
+  ]
+}

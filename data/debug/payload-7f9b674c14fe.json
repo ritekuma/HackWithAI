@@ -1,0 +1,42 @@
+{
+  "hash": "7f9b674c14fe591f49c01f76085e6bed6433ae578ce2d15cffae21f49b3d26c2",
+  "timestamp": "2026-07-16T21:21:28.305Z",
+  "chatId": "065f4967-2865-42df-a67c-2d88c0cbc2f4",
+  "provider": "openrouter",
+  "model": "model-standard-fallback",
+  "mode": "ask",
+  "messageCount": 3,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== HackWithAI v2 — Local Dev Mode (openrouter) =="
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "We need to interpret the user's message. The user "
+        },
+        {
+          "type": "text",
+          "text": "ठीक है, Lio. मैं समझ गया — तुम चाहते हो कि मैं एजे"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "yes you check hum connect kar rahe they jab long t"
+        }
+      ]
+    }
+  ]
+}

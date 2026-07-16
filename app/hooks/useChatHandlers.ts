@@ -28,6 +28,7 @@ import {
 import { createAISDKFilePart } from "@/lib/utils/file-part-adapter";
 import { hasRestageableLocalDesktopAttachments } from "@/lib/utils/local-attachment-messages";
 import { readStoredModelAccessCode } from "@/lib/model-access";
+import { isLocalOnlyModeClient } from "@/lib/local-only";
 
 interface UseChatHandlersProps {
   chatId: string;
@@ -93,6 +94,7 @@ export const useChatHandlers = ({
   const chatModeRef = useLatestRef(chatMode);
   const sandboxPreferenceRef = useLatestRef(sandboxPreference);
   const subscriptionRef = useLatestRef(subscription);
+  const requestLockRef = useRef(false); // prevent overlapping makeRequest() calls
 
   const isSendableUploadedFile = (file: (typeof uploadedFiles)[number]) =>
     file.uploaded &&
@@ -141,12 +143,25 @@ export const useChatHandlers = ({
    * Helper to stop an active stream, normalize messages, and persist state.
    * Returns the normalized messages array.
    * Should be called before any message management operation during streaming.
+   * 
+   * Guards against the AI SDK v6 activeResponse lifecycle bug:
+   * makeRequest() accesses this.activeResponse.state in finally{} without a
+   * null check. Must ensure stream is fully disposed before any new request.
    */
   const stopActiveStream = async (options?: {
     skipSave?: boolean;
   }): Promise<ChatMessage[]> => {
+    // Guard: if already stopped, return current messages
+    if (status !== "streaming" && status !== "submitted") return messages;
+
     // Stop the stream immediately (client-side abort)
     stop();
+    // CRITICAL: Let AI SDK's makeRequest() finally{} complete.
+    // Without this wait, the SDK may access activeResponse.state after disposal.
+    // The SDK's finally{} runs synchronously after the abort promise resolves,
+    // but stop() is not awaitable. We wait one microtask to let the abort
+    // propagate through the SDK's internal event loop.
+    await new Promise(r => setTimeout(r, 0));
 
     // Early return if no messages to process
     if (messages.length === 0) return messages;
@@ -439,7 +454,7 @@ export const useChatHandlers = ({
     setMessages(trimmedMessages);
 
     const shouldSendClientMessagesForRegenerate =
-      hasRestageableLocalDesktopAttachments(trimmedMessages);
+      isLocalOnlyModeClient() || hasRestageableLocalDesktopAttachments(trimmedMessages);
     const persistentRegenerateMessages = shouldSendClientMessagesForRegenerate
       ? trimmedMessages
       : [];
@@ -484,6 +499,7 @@ export const useChatHandlers = ({
   };
 
   const handleRetry = async () => {
+    if (status === "submitted") return; // prevent duplicate submit
     setIsAutoResuming(false);
     resetAutoContinueCount?.();
 
@@ -500,11 +516,13 @@ export const useChatHandlers = ({
     );
     if (cleanedTodos !== todos) setTodos(cleanedTodos);
     if (!temporaryChatsEnabled) {
-      // For persisted chats, backend fetches from database - explicitly send no messages
+      // Local mode: server has no DB, must send full messages
+      // Cloud mode: backend fetches from database — send no messages
+      const retryMessages = isLocalOnlyModeClient() ? messages : [];
       regenerate({
         body: {
           mode: chatModeRef.current,
-          messages: [],
+          messages: retryMessages,
           todos: cleanedTodos,
           regenerate: true,
           temporary: false,
@@ -697,10 +715,48 @@ export const useChatHandlers = ({
   };
 
   const handleContinue = async () => {
-    if (status === "streaming") return;
+    console.info(`[CONTINUE-LIFECYCLE] START chatId=${chatId} status=${status} msgs=${messages.length}`);
+    if (requestLockRef.current) { console.info(`[CONTINUE-LIFECYCLE] LOCKED`); return; }
+    if (status === "streaming" || status === "submitted") {
+      console.info(`[CONTINUE-LIFECYCLE] BLOCKED status=${status}`);
+      return;
+    }
+    requestLockRef.current = true;
     hasManuallyStoppedRef.current = false;
 
-    // ── Durable Resume: try persistent checkpoint first ──
+    // ── Decision tree: task lookup BEFORE resume protocol ──
+    // Only run the resume protocol if there's a real interrupted task.
+    let runningTask: any = null;
+    try {
+      const tasksRes = await fetch(`/api/tasks?chatId=${encodeURIComponent(chatId)}`);
+      if (tasksRes.ok) {
+        const taskData = await tasksRes.json();
+        runningTask = taskData.tasks?.[0];
+      }
+    } catch {}
+
+    if (runningTask) {
+      console.info(`[CONTINUE] Task ${runningTask.taskId} status=${runningTask.status}`);
+
+      if (runningTask.status === "running") {
+        // Task is alive — just reconnect, don't send new request
+        console.info(`[CONTINUE] Task running — reconnecting, no new LLM request`);
+        setTimeout(() => { requestLockRef.current = false; }, 100);
+        return;
+      }
+
+      if (runningTask.status === "completed") {
+        console.info(`[CONTINUE] Task completed — no action needed`);
+        setTimeout(() => { requestLockRef.current = false; }, 100);
+        return;
+      }
+    }
+
+    // ── No active task or task failed: normal send ──
+    // If there are tool-calls in context, include a compact resume.
+    // Otherwise, just send a normal continuation request.
+
+    // Fallback: try durable checkpoint for context
     let resumeContext = "";
     try {
       const res = await fetch(`/api/chats/${encodeURIComponent(chatId)}/checkpoint`);
@@ -714,23 +770,16 @@ export const useChatHandlers = ({
             : "(no saved messages)";
 
           resumeContext = [
-            "=== DURABLE RESUME PROTOCOL (from SQLite checkpoint) ===",
-            `Chat ID: ${chatId}`,
+            "=== RESUME PROTOCOL ===",
             `Goal: ${checkpoint.goal}`,
-            `Plan: ${JSON.stringify(checkpoint.plannerState || {})}`,
             `Execution journal: ${checkpoint.executionJournal?.length || 0} entries`,
-            `Scratchpad: ${(checkpoint.scratchpad || "").substring(0, 200)}`,
-            `Saved messages: ${messages.length > 0 ? 'present in conversation' : savedMsgs.length + ' from checkpoint'}`,
-            `Last updated: ${new Date(checkpoint.updatedAt).toISOString()}`,
-            messages.length === 0 && savedMsgs.length > 0 ? `\n=== SAVED MESSAGE HISTORY ===\n${messageHistory}\n=== END HISTORY ===` : "",
+            `Completed tools: ${checkpoint.executionJournal?.filter((e: any) => e.status === "output-available").length || 0}`,
             "",
-            "INSTRUCTIONS:",
-            "1. The conversation history above contains all prior messages.",
-            "2. The checkpoint describes what was in progress when execution stopped.",
-            "3. Continue EXACTLY from where you left off.",
-            "4. Do NOT restart completed work.",
-            "5. Do NOT ask for context — it is provided above.",
-            "=== END DURABLE RESUME ===",
+            "CONTINUATION:",
+            "1. Review the conversation history above for full context.",
+            "2. Continue EXACTLY from where you left off.",
+            "3. Do NOT restart completed work.",
+            "=== END RESUME PROTOCOL ===",
           ].filter(Boolean).join("\n");
         }
       }
@@ -751,8 +800,20 @@ export const useChatHandlers = ({
     }
 
     // ── Runtime state build (has messages) ──
+    // Only build resume protocol if there are tool calls — otherwise
+    // send normal continuation without confusing the model.
     if (messages.length > 0) {
       const lastAssistant = [...messages].reverse().find(m => m.role === "assistant");
+      const toolCount = (lastAssistant as any)?.parts?.filter((p: any) => p.type?.startsWith("tool-")).length || 0;
+
+      if (toolCount === 0) {
+        // No tool execution — just send a normal continuation.
+        // Don't inject any resume protocol. The model has full conversation history.
+        console.info(`[CONTINUE] No tools in context — sending normal continuation`);
+        sendMessage();
+        setTimeout(() => { requestLockRef.current = false; }, 100);
+        return;
+      }
       const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
 
       const toolCalls = (lastAssistant as any)?.parts
@@ -760,36 +821,49 @@ export const useChatHandlers = ({
         .map((p: any) => ({
           tool: p.type?.replace("tool-", ""),
           state: p.state,
-          input: p.input ? JSON.stringify(p.input).substring(0, 100) : "",
-          output: p.output ? JSON.stringify(p.output).substring(0, 100) : "(pending)",
         })) || [];
+
+      const completedTools = toolCalls.filter(t => t.state === "output-available").length;
+      const pendingTools = toolCalls.filter(t => t.state !== "output-available").length;
+      const currentTool = toolCalls.find(t => t.state !== "output-available");
 
       const textParts = (lastAssistant as any)?.parts
         ?.filter((p: any) => p.type === "text")
         .map((p: any) => (p as any).text || "") || [];
 
       const summary = textParts.join(" ").substring(0, 200);
+      const displaySummary = summary || (pendingTools > 0 ? "(tool execution in progress)" : "(no active tools)");
 
+      // ── Deadlock detection ─────────────────────────────────────────
+      // If status is "running" but no pending tools and no text response,
+      // the task is orphaned — force a new LLM request.
+      const isDeadlocked = pendingTools === 0 && completedTools === 0 && !summary && messages.length > 0;
+      if (isDeadlocked) {
+        console.info(`[CONTINUE] Deadlock detected: no tools running, no text — forcing new request`);
+      }
+
+      // ── Compact resume: metadata only, NEVER raw tool outputs ──
       resumeContext = [
-        "=== RESUME PROTOCOL (from runtime state) ===",
+        "=== RESUME PROTOCOL ===",
+        `Completed tools: ${completedTools}`,
+        `Pending tools: ${pendingTools}`,
+        currentTool ? `Current tool: ${currentTool.tool}` : "",
         `Last user request: "${(lastUserMsg as any)?.parts?.[0]?.text?.substring(0, 100) || "(unknown)"}"`,
-        `Last assistant response summary: "${summary || "(tool execution in progress)"}"`,
-        toolCalls.length > 0 ? `In-progress tool calls (${toolCalls.length}):` : "",
-        ...toolCalls.map(t =>
-          `  - ${t.tool}: state=${t.state} input=${t.input} output=${t.output}`
-        ),
+        `Last assistant summary: "${displaySummary}"`,
+        isDeadlocked ? "NOTE: No tools are currently running. Start a new response." : "",
         "",
-        "INSTRUCTIONS:",
-        "1. Review the conversation above to understand the task and current state.",
-        "2. Identify which tool calls completed and which are still pending.",
-        "3. Continue EXACTLY from where you left off. Do NOT restart completed work.",
-        "4. If a tool call was interrupted, check its output and decide next action.",
-        "5. Produce your next response as if the interruption never happened.",
-        `6. There are ${messages.length} prior messages. Reply in user's language.`,
+        "CONTINUATION:",
+        completedTools > 0 ? `1. ${completedTools} tools already completed — do NOT re-run them.` : "",
+        pendingTools > 0 && currentTool ? `2. Next action: ${currentTool.tool} (status: ${currentTool.state})` :
+          pendingTools > 0 ? `2. ${pendingTools} tools pending — continue with next step.` :
+          "2. No pending tools — continue conversation from where it stopped.",
+        "3. Review the conversation history above for full context.",
+        "4. Continue EXACTLY from where you left off.",
         "=== END RESUME PROTOCOL ===",
-      ].join("\n");
+      ].filter(Boolean).join("\n");
     }
 
+    console.info(`[CONTINUE-LIFECYCLE] SENDING resumeText=${resumeContext.length}c msgs=${messages.length} status=${status}`);
     sendMessage(
       { text: resumeContext, metadata: { isAutoContinue: true } },
       {
@@ -804,6 +878,9 @@ export const useChatHandlers = ({
         },
       },
     );
+    // Release lock after a tick — the SDK's makeRequest() has started by now.
+    // The lock prevents overlapping makeRequest calls which corrupt activeResponse.
+    setTimeout(() => { requestLockRef.current = false; }, 100);
   };
 
   const handleSendNow = async (messageId: string) => {

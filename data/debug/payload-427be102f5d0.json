@@ -1,0 +1,101 @@
+{
+  "hash": "427be102f5d04e874cd5a4b81750967fcf3beffb3356420c5b41e1b52159d607",
+  "timestamp": "2026-07-16T21:15:07.376Z",
+  "chatId": "11898f79-6ef5-444a-86a9-bd67587a7328",
+  "provider": "openrouter",
+  "model": "model-standard-fallback",
+  "mode": "ask",
+  "messageCount": 10,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== HackWithAI v2 — Local Dev Mode (openrouter) =="
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "तुम एजेंट मोड में हो तुम जाकर करो ना और अगर तुम्हे"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "=== RESUME PROTOCOL ===\nCompleted tools: 0\nPending"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "तुम एजेंट मोड में हो तुम जाकर करो ना और अगर तुम्हे"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "समझ गया Lio! तुम चाहते हो कि मैं **Burp Suite Prof"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "ahent mode me ho check karo connect ho gaye ho bup"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "agent mode"
+        }
+      ]
+    }
+  ]
+}

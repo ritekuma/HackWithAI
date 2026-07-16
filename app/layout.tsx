@@ -114,6 +114,12 @@ export default function RootLayout({
         />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="48x48" />
+        {/* ChunkLoadError recovery: auto-reload on stale chunks after hot reload */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var k="__hwai_cr",n=parseInt(sessionStorage.getItem(k)||"0");if(n<3){(window.__hwai_chunk_reload=function(){sessionStorage.setItem(k,String(n+1));location.reload()})};window.addEventListener("error",function(e){if(e.target&&e.target.tagName==="SCRIPT"&&e.target.src){console.info("[RECOVERY] Script load failed, auto-reloading");window.__hwai_chunk_reload()}});window.addEventListener("unhandledrejection",function(e){var m=e.reason?.message||"";if(m.includes("ChunkLoadError")||m.includes("Failed to fetch")||m.includes("dynamically imported module")){console.info("[RECOVERY] Chunk error, auto-reloading");window.__hwai_chunk_reload()}})})();`,
+          }}
+        />
       </head>
       <body className="antialiased h-full">
         {content}
