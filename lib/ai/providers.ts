@@ -245,6 +245,7 @@ const openrouterPatchFetch: typeof fetch = async (url, init) => {
 // ============================================================================
 export type ProviderMode =
   | "openrouter"
+  | "deepseek"
   | "openai"
   | "google"
   | "anthropic"
@@ -254,7 +255,7 @@ export const getProviderMode = (): ProviderMode => {
   const mode = process.env.PROVIDER_MODE as ProviderMode | undefined;
   if (
     mode &&
-    ["openrouter", "openai", "google", "anthropic", "ollama"].includes(mode)
+    ["openrouter", "deepseek", "openai", "google", "anthropic", "ollama"].includes(mode)
   ) {
     return mode;
   }
@@ -289,6 +290,11 @@ const ollama = createOllama({
   baseURL: process.env.OLLAMA_BASE_URL || "http://localhost:11434/api",
 });
 
+const deepseek = createOpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com/v1",
+});
+
 type OpenRouterInstance = typeof openrouter;
 
 // ============================================================================
@@ -301,6 +307,36 @@ const buildOpenRouterMap = (or: OpenRouterInstance): Record<string, ReturnType<t
   const out: Record<string, ReturnType<typeof or>> = {};
   for (const [key, modelId] of Object.entries(TIER_MODEL_MAP)) {
     out[key] = or(modelId);
+  }
+  return out;
+};
+
+// Temporary DeepSeek native API provider. Strips the OpenRouter "deepseek/" prefix
+// to produce native model IDs. Non-DeepSeek models (gemini, claude, etc.) are mapped
+// to the closest DeepSeek equivalent since DeepSeek API only serves DeepSeek models.
+const DEEPSEEK_NATIVE_MAP: Record<string, string> = {
+  "deepseek/deepseek-chat":         "deepseek-chat",
+  "deepseek/deepseek-v4-pro":       "deepseek-v4-pro",
+  "deepseek/deepseek-v4-flash":     "deepseek-v4-flash",
+  "deepseek/deepseek-r1":           "deepseek-reasoner",
+  "google/gemini-2.5-flash":        "deepseek-chat",     // fallback
+  "google/gemini-2.5-pro":          "deepseek-chat",
+  "anthropic/claude-sonnet-4.6":    "deepseek-chat",
+  "anthropic/claude-opus-4.6":      "deepseek-chat",
+  "moonshotai/kimi-k2.6":           "deepseek-chat",
+  "x-ai/grok-4":                    "deepseek-chat",
+  "nousresearch/hermes-3-llama-3.1-405b": "deepseek-chat",
+  "qwen/qwen-2.5-coder-32b-instruct": "deepseek-chat",
+};
+
+const resolveDeepSeekModelId = (openRouterId: string): string =>
+  DEEPSEEK_NATIVE_MAP[openRouterId] || "deepseek-chat";
+
+const buildDeepSeekMap = (ds: typeof deepseek): Record<string, ReturnType<typeof deepseek>> => {
+  const out: Record<string, ReturnType<typeof deepseek>> = {};
+  for (const [key, modelId] of Object.entries(TIER_MODEL_MAP)) {
+    const nativeId = resolveDeepSeekModelId(modelId as string);
+    out[key] = ds(nativeId);
   }
   return out;
 };
@@ -407,6 +443,8 @@ const buildOllamaMap = () => {
 const buildProviderMap = () => {
   const mode = getProviderMode();
   switch (mode) {
+    case "deepseek":
+      return buildDeepSeekMap(deepseek);
     case "openai":
       return buildOpenAIMap();
     case "google":

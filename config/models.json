@@ -6,7 +6,8 @@
   "lastUpdated": "2026-07-06",
 
   "providers": {
-    "openrouter": { "enabled": true,  "role": "primary",     "note": "सभी AI requests यहाँ से" },
+    "openrouter": { "enabled": false,  "role": "inactive",    "note": "Temporarily disabled. Re-enable by setting PROVIDER_MODE=openrouter." },
+    "deepseek":   { "enabled": true,   "role": "primary",     "note": "Official DeepSeek API — temporary primary provider. Set DEEPSEEK_API_KEY." },
     "openai":     { "enabled": false, "role": "future",      "note": "भविष्य के moderation/features" },
     "anthropic":  { "enabled": false, "role": "via-OR",      "note": "OpenRouter के माध्यम से" },
     "google":     { "enabled": false, "role": "via-OR",      "note": "OpenRouter के माध्यम से" },
@@ -24,9 +25,12 @@
 
   "tiers": {
     "standard": {
+      "_comment": "Temporary DeepSeek-focused routing. General chat + fallback → V3, coding + tools → V4 Pro, reasoning → R1.",
       "label": "Standard",
-      "primary":   { "model": "deepseek/deepseek-v4-pro",  "useCases": ["general-chat", "coding", "reasoning", "tool-calling", "agent-execution"] },
-      "fallback":  { "model": "deepseek/deepseek-v4-flash", "useCases": ["fast-response"] }
+      "primary":   { "model": "deepseek/deepseek-chat",    "useCases": ["general-chat", "fast-response", "fallback"] },
+      "coding":    { "model": "deepseek/deepseek-v4-pro",  "useCases": ["coding", "tool-calling", "agent-execution"] },
+      "reasoning": { "model": "deepseek/deepseek-r1",      "useCases": ["deep-reasoning", "complex-analysis", "planning"] },
+      "fallback":  { "model": "deepseek/deepseek-chat",    "useCases": ["fast-response"] }
     },
     "pro": {
       "label": "Pro",
@@ -44,9 +48,9 @@
   },
 
   "agents": {
-    "general-chat":        { "model": "deepseek/deepseek-v4-pro",             "role": "Default chat fallback" },
-    "fast-chat":           { "model": "deepseek/deepseek-v4-flash",            "role": "Quick responses, low-latency" },
-    "coding":              { "model": "deepseek/deepseek-v4-pro",             "role": "Refactoring, bug fixing, repo understanding, MCP, tool execution" },
+    "general-chat":        { "model": "deepseek/deepseek-chat",               "role": "Default chat (DeepSeek V3)" },
+    "fast-chat":           { "model": "deepseek/deepseek-chat",               "role": "Quick responses (DeepSeek V3)" },
+    "coding":              { "model": "deepseek/deepseek-v4-pro",             "role": "Refactoring, bug fixing, repo understanding, MCP, tool execution (V4 Pro)" },
     "code-review":         { "model": "anthropic/claude-sonnet-4.6",           "role": "PR review, code review, security review" },
     "architecture":        { "model": "anthropic/claude-sonnet-4.6",           "role": "Architecture decisions, task breakdown, planning" },
     "enterprise-builder":  { "model": "nousresearch/hermes-3-llama-3.1-405b", "role": "Large-repo orchestration" },
@@ -65,15 +69,15 @@
     { "key": "agent-reviewer",     "model": "anthropic/claude-sonnet-4.6",          "role": "Code review, security audit" },
     { "key": "agent-critic",       "model": "x-ai/grok-4",                          "role": "Adversarial critique" },
     { "key": "agent-debate",       "model": "x-ai/grok-4",                          "role": "Debate engine (5 agents)" },
-    { "key": "agent-optimizer",    "model": "deepseek/deepseek-v4-flash",           "role": "Tool mapping, cost optimization" },
-    { "key": "agent-self-improve", "model": "deepseek/deepseek-v4-flash",           "role": "ELO tracking, learning loop" },
+    { "key": "agent-optimizer",    "model": "deepseek/deepseek-chat",              "role": "Tool mapping, cost optimization (V3)" },
+    { "key": "agent-self-improve", "model": "deepseek/deepseek-chat",              "role": "ELO tracking, learning loop (V3)" },
     { "key": "agent-coordinator",  "model": "nousresearch/hermes-3-llama-3.1-405b", "role": "Pipeline orchestration" }
   ],
 
   "debateEngine": {
     "enabled": true,
     "rounds": [
-      { "step": 1, "agent": "deepseek",  "model": "deepseek/deepseek-v4-pro",   "task": "Initial reasoning + answer" },
+      { "step": 1, "agent": "deepseek",  "model": "deepseek/deepseek-chat",      "task": "Initial reasoning + answer (DeepSeek V3)" },
       { "step": 2, "agent": "claude",    "model": "anthropic/claude-sonnet-4.6", "task": "Challenge with counter-arguments" },
       { "step": 3, "agent": "grok",      "model": "x-ai/grok-4",                 "task": "Criticize both positions adversarially" },
       { "step": 4, "agent": "consensus", "model": "anthropic/claude-sonnet-4.6", "task": "Synthesize final consensus" }
@@ -90,26 +94,27 @@
       { "intent": "architecture",     "patterns": ["design", "architect", "plan", "structure", "high-level"],                   "model": "anthropic/claude-sonnet-4.6" },
       { "intent": "enterprise-workflow", "patterns": ["enterprise", "orchestrate", "long workflow", "multi-agent", "team"],     "model": "nousresearch/hermes-3-llama-3.1-405b" },
       { "intent": "debate",           "patterns": ["debate", "discuss", "argue", "pros and cons", "second opinion"],             "model": "x-ai/grok-4" },
-      { "intent": "fast",             "patterns": ["quick", "fast", "short", "tl;dr", "summarize"],                                "model": "deepseek/deepseek-v4-flash" },
-      { "intent": "default",          "patterns": [],                                                                              "model": "deepseek/deepseek-v4-pro" }
+      { "intent": "fast",             "patterns": ["quick", "fast", "short", "tl;dr", "summarize"],                                "model": "deepseek/deepseek-chat" },
+      { "intent": "default",          "patterns": [],                                                                              "model": "deepseek/deepseek-chat" }
     ]
   },
 
   "tierKeys": {
     "_comment": "These keys map directly to the old providers.ts TIER_MAP. Keep names stable for backwards compat with chat.tsx, /api/chat, agent-routing.ts.",
     "ask-model":              "deepseek/deepseek-chat",
-    "ask-model-free":         "deepseek/deepseek-v4-pro",
-    "agent-model":            "deepseek/deepseek-v4-pro",
-    "agent-model-free":       "deepseek/deepseek-v4-pro",
-    "fallback-agent-model":   "google/gemini-2.5-pro",
+    "ask-model-free":         "deepseek/deepseek-chat",
+    "agent-model":            "deepseek/deepseek-chat",
+    "agent-model-free":       "deepseek/deepseek-chat",
+    "fallback-agent-model":   "deepseek/deepseek-chat",
 
-    "model-standard-chat":    "deepseek/deepseek-v4-pro",
+    "model-standard-chat":    "deepseek/deepseek-chat",
     "model-standard-code":    "deepseek/deepseek-v4-pro",
+    "model-standard-reasoning": "deepseek/deepseek-r1",
     "model-standard-research":"moonshotai/kimi-k2.6",
     "model-standard-vision":  "google/gemini-2.5-flash",
     "model-standard-critic":  "x-ai/grok-4",
-    "model-standard-title":   "deepseek/deepseek-v4-flash",
-    "model-standard-fallback":"deepseek/deepseek-v4-flash",
+    "model-standard-title":   "deepseek/deepseek-chat",
+    "model-standard-fallback":"deepseek/deepseek-chat",
 
     "model-pro-chat":         "anthropic/claude-sonnet-4.6",
     "model-pro-code":         "anthropic/claude-sonnet-4.6",
@@ -133,7 +138,7 @@
     "model-enterprise-vision":"google/gemini-2.5-flash",
     "model-enterprise-critic":"x-ai/grok-4",
     "model-enterprise-title": "deepseek/deepseek-v4-flash",
-    "model-enterprise-fallback":"deepseek/deepseek-v4-flash",
+    "model-enterprise-fallback":"deepseek/deepseek-chat",
 
     "agent-planner":          "nousresearch/hermes-3-llama-3.1-405b",
     "agent-researcher":       "moonshotai/kimi-k2.6",
@@ -141,8 +146,8 @@
     "agent-reviewer":         "anthropic/claude-sonnet-4.6",
     "agent-critic":           "x-ai/grok-4",
     "agent-debate":           "x-ai/grok-4",
-    "agent-optimizer":        "deepseek/deepseek-v4-flash",
-    "agent-self-improve":     "deepseek/deepseek-v4-flash",
+    "agent-optimizer":        "deepseek/deepseek-chat",
+    "agent-self-improve":     "deepseek/deepseek-chat",
     "agent-coordinator":      "nousresearch/hermes-3-llama-3.1-405b",
 
     "model-vision":           "google/gemini-2.5-flash",
@@ -150,10 +155,10 @@
     "model-grok":             "x-ai/grok-4",
     "model-qwen-code":        "qwen/qwen-2.5-coder-32b-instruct",
     "model-hermes-plan":      "nousresearch/hermes-3-llama-3.1-405b",
-    "model-helper":           "deepseek/deepseek-v4-flash",
-    "title-generator-model":  "deepseek/deepseek-v4-flash",
-    "fallback-agent-model":   "deepseek/deepseek-v4-pro",
-    "fallback-ask-model":     "deepseek/deepseek-v4-pro",
+    "model-helper":           "deepseek/deepseek-chat",
+    "title-generator-model":  "deepseek/deepseek-chat",
+    "fallback-agent-model":   "deepseek/deepseek-chat",
+    "fallback-ask-model":     "deepseek/deepseek-chat",
     "final-review-model":     "google/gemini-2.5-flash"
   }
 }
