@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: '20.x', cache: 'pnpm' }
       - run: pnpm install --no-frozen-lockfile
       - run: npx tsx scripts/validation/load.ts ${{ github.event.inputs.concurrency || '50' }} --output data/load-report.json
