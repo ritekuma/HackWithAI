@@ -491,6 +491,17 @@ export function createChatHandler() {
         });
         mk.start(mission.id);
         missionRef = { id: mission.id };
+
+        // Add initial goals based on the user's request
+        mk.addGoal(mission.id, `Complete: ${goal.substring(0, 150)}`);
+
+        // Mission tracking state (lives for this stream)
+        let toolSuccessCount = 0;
+        let toolFailureCount = 0;
+        let consecutiveFailures = 0;
+        const FAILURE_RECOVERY_THRESHOLD = 3;
+        const CHECKPOINT_INTERVAL = 5;
+
         console.info(`[MISSION] created id=${mission.id} state=${mission.state}`);
 
         // ── Executive Kernel: CEO, CTO, COO, CQA, CSO, CRO, CMO, CIO ──
@@ -538,6 +549,16 @@ export function createChatHandler() {
                 setBackendCapability("terminal", { healthy: false, lastError: "Terminal health check failed" });
               }
             }
+
+            // Recovery context: when mission was recovered, inject summary
+            const currentMission = getMissionKernel().get(mission.id);
+            if (currentMission && currentMission.recoveryCount > 0) {
+              const goals = currentMission.context.goals || [];
+              const completed = goals.filter(g => g.status === "completed");
+              const pending = goals.filter(g => g.status !== "completed");
+              console.info(`[MISSION] recovery=${currentMission.recoveryCount} completed=${completed.length}/${goals.length} pending=${pending.length}`);
+            }
+
             // Kernel reviews tool execution
             kernel.recordDecision("cto");
             return {};
@@ -545,7 +566,7 @@ export function createChatHandler() {
 
           onStepFinish: ({ text, toolCalls, toolResults, finishReason }) => {
             const eb = getEventBus();
-            // Emit tool events
+
             if (toolCalls && toolCalls.length > 0) {
               kernel.recordDecision("cto");
               for (const tc of toolCalls) {
@@ -553,41 +574,131 @@ export function createChatHandler() {
                 eb.publish("tool:started", { toolName: tcName, toolCallId: (tc as any).toolCallId, chatId: chatIdStr }, { chatId: chatIdStr });
               }
             }
+
             if (toolResults && toolResults.length > 0) {
               for (const tr of toolResults) {
                 const trName = (tr as any).toolName || (tr as any).name || "unknown";
                 const trResult = (tr as any).result || (tr as any).output;
+
                 if (trResult && typeof trResult === "object" && "error" in trResult) {
-                  eb.publish("tool:failed", { toolName: trName, toolCallId: (tr as any).toolCallId, error: String(trResult.error), retryCount: 0 }, { chatId: chatIdStr });
+                  // Tool failure — record evidence and track failures
+                  toolFailureCount++;
+                  consecutiveFailures++;
+                  mk.recordEvent(mission.id, "error",
+                    `Tool '${trName}' failed: ${String(trResult.error)}`,
+                    { toolName: trName, error: trResult.error, failureCount: toolFailureCount }
+                  );
+                  eb.publish("tool:failed", {
+                    toolName: trName, toolCallId: (tr as any).toolCallId,
+                    error: String(trResult.error), retryCount: consecutiveFailures,
+                  }, { chatId: chatIdStr });
+
+                  // Recovery after N consecutive failures
+                  if (consecutiveFailures >= FAILURE_RECOVERY_THRESHOLD) {
+                    console.warn(`[MISSION] ${consecutiveFailures} consecutive tool failures — initiating recovery`);
+                    const recovered = mk.recover(mission.id);
+                    consecutiveFailures = 0;
+                    if (recovered.success && recovered.checkpoint) {
+                      mk.recordEvent(mission.id, "recovery",
+                        `Recovered from checkpoint ${recovered.checkpoint.id} after ${FAILURE_RECOVERY_THRESHOLD} failures`
+                      );
+                    }
+                  }
                 } else {
-                  eb.publish("tool:completed", { toolName: trName, toolCallId: (tr as any).toolCallId, durationMs: 0, result: trResult }, { chatId: chatIdStr });
+                  // Tool success — track progress, reset failure counter
+                  toolSuccessCount++;
+                  consecutiveFailures = 0;
+
+                  // Try to match tool to a goal
+                  const goals = mk.get(mission.id)?.context.goals || [];
+                  const pendingGoal = goals.find(g => g.status === "pending");
+                  if (pendingGoal) {
+                    mk.updateGoal(mission.id, pendingGoal.id, {
+                      status: "completed",
+                      evidence: { toolName: trName, result: trResult },
+                    });
+                    mk.recordEvent(mission.id, "plan_step",
+                      `Goal completed: ${pendingGoal.description}`,
+                      { toolName: trName }
+                    );
+                  }
+
+                  mk.recordEvent(mission.id, "tool_call",
+                    `Tool '${trName}' completed successfully`,
+                    { toolName: trName }
+                  );
+                  eb.publish("tool:completed", {
+                    toolName: trName, toolCallId: (tr as any).toolCallId,
+                    durationMs: 0, result: trResult,
+                  }, { chatId: chatIdStr });
+
+                  // Auto-checkpoint every N successful tool calls
+                  if (toolSuccessCount > 0 && toolSuccessCount % CHECKPOINT_INTERVAL === 0) {
+                    mk.saveCheckpoint(mission.id, {
+                      completedTasks: [trName],
+                      toolCallsCount: toolSuccessCount,
+                    });
+                  }
                 }
               }
             }
-            // On completion, update kernel state
+
+            // On stream completion, update kernel state
             if (finishReason === "stop" || finishReason === "length") {
               kernel.onMissionComplete(task.taskId);
             }
             // Update task progress
-            updateTaskProgress(task.taskId, text?.substring(0, 200) || "step complete", 0, 1);
+            const currentProgress = mk.get(mission.id)?.progress || 0;
+            updateTaskProgress(task.taskId, text?.substring(0, 200) || "step complete", currentProgress, 100);
           },
         });
 
         // Mark task completed when stream finishes
         result.fullStream.pipeTo(new WritableStream({
           close() {
-            updateTaskStatus(task.taskId, "completed");
+            const currentMission = getMissionKernel().get(mission.id);
+
+            // Validate mission state before completing
+            const goals = currentMission?.context.goals || [];
+            const pendingGoals = goals.filter(g => g.status !== "completed");
+            const hasFailures = toolFailureCount > 0;
+            const hasSuccesses = toolSuccessCount > 0;
+
+            if (pendingGoals.length > 0 && hasFailures && !hasSuccesses) {
+              // All tools failed, no goals satisfied — fail the mission
+              getMissionKernel().fail(mission.id,
+                `Mission failed: ${toolFailureCount} tool failures, ${pendingGoals.length} goals pending`,
+                { toolFailureCount, toolSuccessCount, pendingGoals: pendingGoals.map(g => g.description) }
+              );
+              updateTaskStatus(task.taskId, "failed", "all tools failed");
+            } else if (pendingGoals.length > 0 && hasSuccesses) {
+              // Partial success — fail with summary (recovery still possible on next send)
+              getMissionKernel().fail(mission.id,
+                `Mission incomplete: ${pendingGoals.length}/${goals.length} goals pending, ${toolSuccessCount} tools succeeded, ${toolFailureCount} failed`,
+                { toolFailureCount, toolSuccessCount, pendingGoals: pendingGoals.map(g => g.description) }
+              );
+              updateTaskStatus(task.taskId, "failed", "incomplete");
+            } else if (pendingGoals.length === 0) {
+              // All goals satisfied
+              getMissionKernel().complete(mission.id);
+              updateTaskStatus(task.taskId, "completed");
+            } else {
+              // No tools ran (ask mode, etc.)
+              updateTaskStatus(task.taskId, "completed");
+            }
+
             getEventBus().publish("agent:task:completed", { taskId: task.taskId, result: {}, durationMs: Date.now() - t0 }, { chatId: chatIdStr });
             getEventBus().publish("chat:response:completed", { chatId: chatIdStr, tokensTotal: 0, durationMs: Date.now() - t0 }, { chatId: chatIdStr });
-            getEventBus().publish("mission:completed", { missionId: task.taskId, result: {}, durationMs: Date.now() - t0 }, { missionId: task.taskId, chatId: chatIdStr });
-            // Mission Kernel completion
-            try { getMissionKernel().complete(mission.id); } catch {}
           },
           abort() {
             updateTaskStatus(task.taskId, "failed", "aborted");
             getEventBus().publish("agent:task:failed", { taskId: task.taskId, error: "aborted" }, { chatId: chatIdStr });
             getEventBus().publish("mission:failed", { missionId: task.taskId, error: "aborted", phase: "stream" }, { missionId: task.taskId, chatId: chatIdStr });
-            try { getMissionKernel().fail(mission.id, "aborted"); } catch {}
+            try {
+              getMissionKernel().fail(mission.id, "aborted",
+                { toolFailureCount, toolSuccessCount, aborted: true }
+              );
+            } catch {}
           },
         })).catch(() => {});
 
