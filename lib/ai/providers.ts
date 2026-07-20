@@ -293,6 +293,7 @@ const ollama = createOllama({
 const deepseek = createOpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
   baseURL: "https://api.deepseek.com/v1",
+  compatibility: "compatible",
 });
 
 type OpenRouterInstance = typeof openrouter;
@@ -332,11 +333,11 @@ const DEEPSEEK_NATIVE_MAP: Record<string, string> = {
 const resolveDeepSeekModelId = (openRouterId: string): string =>
   DEEPSEEK_NATIVE_MAP[openRouterId] || "deepseek-chat";
 
-const buildDeepSeekMap = (ds: typeof deepseek): Record<string, ReturnType<typeof deepseek>> => {
-  const out: Record<string, ReturnType<typeof deepseek>> = {};
+const buildDeepSeekMap = (ds: typeof deepseek): Record<string, ReturnType<typeof ds.chat>> => {
+  const out: Record<string, ReturnType<typeof ds.chat>> = {};
   for (const [key, modelId] of Object.entries(TIER_MODEL_MAP)) {
     const nativeId = resolveDeepSeekModelId(modelId as string);
-    out[key] = ds(nativeId);
+    out[key] = ds.chat(nativeId);
   }
   return out;
 };
