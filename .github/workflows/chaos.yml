@@ -1,0 +1,25 @@
+name: Chaos Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'Chaos scenario (all, pty, redis, db, ws, memory, concurrency)'
+        required: false
+        default: 'all'
+
+jobs:
+  chaos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with: { node-version: '20.x', cache: 'pnpm' }
+      - run: pnpm install --frozen-lockfile
+      - run: npx tsx scripts/validation/chaos.ts --scenario ${{ github.event.inputs.scenario || 'all' }} --output data/chaos-report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chaos-report
+          path: data/chaos-report.json

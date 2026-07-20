@@ -1,0 +1,25 @@
+name: Soak Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Duration in hours'
+        required: false
+        default: '1'
+
+jobs:
+  soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4320
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with: { node-version: '20.x', cache: 'pnpm' }
+      - run: pnpm install --frozen-lockfile
+      - run: npx tsx scripts/validation/soak.ts ${{ github.event.inputs.duration || '1' }} --output data/soak-report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soak-report
+          path: data/soak-report.json
