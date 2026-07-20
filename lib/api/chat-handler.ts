@@ -274,10 +274,13 @@ export function createChatHandler() {
             const pty = getOrCreatePty(chatId);
             const startTime = Date.now();
             try {
-              // Change to tracked cwd before executing
               pty.process.stdin.write(`cd '${pty.cwd}' 2>/dev/null; ${command}; echo "EXIT:$?"; pwd\n`);
               const result = await new Promise<{ stdout: string; stderr: string; exitCode: number; cwd: string }>((resolve, reject) => {
-                const timer = setTimeout(() => reject(new Error("Command timed out")), timeout || 120000);
+                const timeoutMs = timeout || 120000;
+                const timer = setTimeout(() => {
+                  cleanup();
+                  reject(new Error("Command timed out"));
+                }, timeoutMs);
                 let stdout = "";
                 let stderr = "";
                 const onData = (data: Buffer) => {
@@ -285,7 +288,6 @@ export function createChatHandler() {
                   if (text.includes("EXIT:")) {
                     const exitMatch = text.match(/EXIT:(\d+)/);
                     const exitCode = exitMatch ? parseInt(exitMatch[1]) : 0;
-                    // Last line before EXIT is pwd output
                     const lines = text.split("\n");
                     const pwdLine = lines[lines.length - 2] || pty.cwd;
                     stdout += text.replace(/EXIT:\d+\n.*\n?$/, "").trim();
@@ -303,10 +305,6 @@ export function createChatHandler() {
                 };
                 pty.process.stdout.on("data", onData);
                 pty.process.stderr.on("data", onErr);
-                setTimeout(() => {
-                  cleanup();
-                  reject(new Error("Command timed out"));
-                }, timeout || 120000);
               });
               // Update tracked cwd
               if (result.cwd && result.cwd !== pty.cwd) {
@@ -323,17 +321,18 @@ export function createChatHandler() {
                 missionId: missionRef?.id,
               };
             } catch (e: any) {
-              // On timeout/failure, verify terminal health
+              // On ANY failure (timeout, crash, hang): kill the PTY to prevent
+              // command accumulation in the bash session. A timed-out command
+              // is still running in bash — reusing the session causes the next
+              // command to block behind the hung process.
+              try { pty.process.kill(); } catch {}
+              ptyPool.delete(chatId);
+
+              // Try health check in a fresh shell (not the hung PTY)
               try {
                 const check = execSync("echo OK", { timeout: 3000, encoding: "utf-8", shell: "/bin/bash" });
-                // Terminal alive — the command itself failed (e.g., network timeout)
                 const errMsg = e.message || "Command failed";
-                const isNetworkError = /ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|resolve|connect|network|timeout/i.test(errMsg);
-                if (isNetworkError) {
-                  setBackendCapability("terminal", { healthy: true, canAccessInternet: false, lastError: errMsg.substring(0, 80) });
-                } else {
-                  setBackendCapability("terminal", { healthy: true, lastError: errMsg.substring(0, 80) });
-                }
+                setBackendCapability("terminal", { healthy: true, lastError: errMsg.substring(0, 80) });
                 return {
                   stdout: check.trim(),
                   stderr: errMsg,
@@ -344,9 +343,8 @@ export function createChatHandler() {
                   missionId: missionRef?.id,
                 };
               } catch {
-                // Terminal truly dead — recreate
-                try { pty.process.kill(); } catch {}
-                ptyPool.delete(chatId);
+                // Terminal fully down
+                setBackendCapability("terminal", { healthy: false, lastError: "Terminal health check failed" });
                 return {
                   stdout: "",
                   stderr: `Terminal session died. Command: ${command}. Error: ${e.message}. A new shell will be created on next command.`,
