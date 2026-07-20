@@ -293,7 +293,7 @@ const ollama = createOllama({
 const deepseek = createOpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
   baseURL: "https://api.deepseek.com/v1",
-  compatibility: "compatible",
+  compatibility: "strict",
 });
 
 type OpenRouterInstance = typeof openrouter;

@@ -253,7 +253,7 @@ export function createChatHandler() {
       const localTools = toolsEnabled ? {
         run_terminal_cmd: tool({
           description: "Execute a shell command on the local machine. Uses persistent shell — cwd, env, and shell state survive across calls within a conversation. Returns stdout, stderr, exit code, and current working directory.",
-          parameters: z.object({
+          inputSchema: z.object({
             command: z.string().describe("The shell command to execute"),
             timeout: z.number().optional().default(120000).describe("Timeout in milliseconds (default 120s)"),
           }),
@@ -362,7 +362,7 @@ export function createChatHandler() {
         }),
         file_write: tool({
           description: "Write content to a file on the local filesystem. Creates parent directories if needed.",
-          parameters: z.object({
+          inputSchema: z.object({
             path: z.string().describe("Absolute path to write the file to"),
             content: z.string().describe("Content to write to the file"),
           }),
@@ -385,7 +385,7 @@ export function createChatHandler() {
         }),
         file_read: tool({
           description: "Read the contents of a file on the local filesystem.",
-          parameters: z.object({
+          inputSchema: z.object({
             path: z.string().describe("Absolute path to the file to read"),
             maxBytes: z.number().optional().default(10240).describe("Maximum bytes to read"),
           }),
