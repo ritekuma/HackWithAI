@@ -75,6 +75,12 @@ class EventBus extends EventEmitter {
     // Start dead letter retry loop
     this.retryTimer = setInterval(() => this.processDeadLetterRetries(), 5000);
 
+    // WAL checkpoint every 10 minutes
+    setInterval(() => {
+      const { getEventDb } = require("./database");
+      try { getEventDb().pragma("wal_checkpoint(TRUNCATE)"); } catch {}
+    }, 600000);
+
     console.info("[EVENT] bus initialized");
   }
 
@@ -141,12 +147,16 @@ class EventBus extends EventEmitter {
 
     recordEventPublished(event as unknown as Event);
 
-    // Handle sticky events
+    // Handle sticky events (LRU bounded — max 1000 per type, evict oldest)
     if (options.sticky) {
       if (!this.stickyEvents.has(type as string)) {
         this.stickyEvents.set(type as string, []);
       }
-      this.stickyEvents.get(type as string)!.push(event as unknown as Event);
+      const events = this.stickyEvents.get(type as string)!;
+      events.push(event as unknown as Event);
+      if (events.length > 1000) {
+        events.shift(); // LRU eviction: drop oldest
+      }
     }
 
     // Handle delayed delivery

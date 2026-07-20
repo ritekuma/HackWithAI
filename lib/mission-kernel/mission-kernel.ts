@@ -1,6 +1,9 @@
 // @module mission-kernel/mission-kernel v1.0.0 — Unified Mission Execution Kernel
 
 import { randomUUID } from "crypto";
+import Database from "better-sqlite3";
+import path from "path";
+import fs from "fs";
 import {
   type MissionState,
   validateTransition,
@@ -87,11 +90,102 @@ interface MissionStore {
 class MissionKernel {
   private missions: MissionStore = {};
   private initialized: boolean = false;
+  private db: Database.Database | null = null;
 
   init(): void {
     if (this.initialized) return;
     this.initialized = true;
-    console.info("[MISSION] kernel initialized");
+
+    // Initialize SQLite persistence
+    const dataDir = path.join(process.cwd(), "data");
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    const dbPath = path.join(dataDir, "mission-kernel.db");
+    this.db = new Database(dbPath);
+    this.db.pragma("journal_mode = WAL");
+    this.db.pragma("synchronous = NORMAL");
+    this.db.pragma("busy_timeout = 5000");
+
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS persistent_missions (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'general',
+        priority TEXT NOT NULL DEFAULT 'medium',
+        owner TEXT NOT NULL DEFAULT 'system',
+        state TEXT NOT NULL DEFAULT 'created',
+        context_json TEXT NOT NULL DEFAULT '{}',
+        features_json TEXT NOT NULL DEFAULT '[]',
+        progress REAL NOT NULL DEFAULT 0,
+        tool_calls_total INTEGER NOT NULL DEFAULT 0,
+        tokens_used INTEGER NOT NULL DEFAULT 0,
+        cost_dollars REAL NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        started_at INTEGER,
+        completed_at INTEGER,
+        failed_at INTEGER,
+        recovery_count INTEGER NOT NULL DEFAULT 0,
+        error TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_pm_state ON persistent_missions(state);
+      CREATE INDEX IF NOT EXISTS idx_pm_created ON persistent_missions(created_at);
+    `);
+
+    // Reload missions from persistent store
+    this.loadFromDatabase();
+    const active = Object.values(this.missions).filter(m => isActiveState(m.state)).length;
+    console.info(`[MISSION] kernel initialized persistent=${Object.keys(this.missions).length} active=${active}`);
+  }
+
+  private loadFromDatabase(): void {
+    if (!this.db) return;
+    const rows = this.db.prepare("SELECT * FROM persistent_missions ORDER BY created_at DESC").all() as Record<string, unknown>[];
+    for (const row of rows) {
+      this.missions[row.id as string] = this.rowToMission(row);
+    }
+  }
+
+  private persistMission(mission: MissionDefinition): void {
+    if (!this.db) return;
+    this.db.prepare(`
+      INSERT OR REPLACE INTO persistent_missions (
+        id, name, type, priority, owner, state, context_json, features_json,
+        progress, tool_calls_total, tokens_used, cost_dollars,
+        created_at, updated_at, started_at, completed_at, failed_at, recovery_count, error
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).run(
+      mission.id, mission.name, mission.type, mission.priority,
+      mission.owner, mission.state,
+      JSON.stringify(mission.context), JSON.stringify(mission.features),
+      mission.progress, mission.toolCallsTotal, mission.tokensUsed, mission.costDollars,
+      mission.createdAt, mission.updatedAt,
+      mission.startedAt || null, mission.completedAt || null,
+      mission.failedAt || null, mission.recoveryCount, mission.error || null,
+    );
+  }
+
+  private rowToMission(row: Record<string, unknown>): MissionDefinition {
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      type: row.type as string,
+      priority: (row.priority as MissionPriority) || "medium",
+      owner: row.owner as string,
+      state: row.state as MissionState,
+      context: JSON.parse((row.context_json as string) || "{}"),
+      features: JSON.parse((row.features_json as string) || "[]"),
+      progress: row.progress as number,
+      toolCallsTotal: row.tool_calls_total as number,
+      tokensUsed: row.tokens_used as number,
+      costDollars: row.cost_dollars as number,
+      createdAt: row.created_at as number,
+      updatedAt: row.updated_at as number,
+      startedAt: row.started_at as number | undefined,
+      completedAt: row.completed_at as number | undefined,
+      failedAt: row.failed_at as number | undefined,
+      recoveryCount: row.recovery_count as number,
+      error: row.error as string | undefined,
+    };
   }
 
   // ── CRUD ────────────────────────────────────────────
@@ -137,6 +231,7 @@ class MissionKernel {
     };
 
     this.missions[id] = mission;
+    this.persistMission(mission);
 
     recordTimelineEntry({
       missionId: id,
@@ -239,6 +334,9 @@ class MissionKernel {
       detail: reason || `Transition: ${fromState} → ${to}`,
       evidence: { from: fromState, to },
     });
+
+    // Persist mission state to survive restarts
+    this.persistMission(mission);
 
     // Event Bus
     try {
@@ -394,6 +492,8 @@ class MissionKernel {
       evidence: evidence.data,
       correlationId: evidence.correlationId,
     });
+    const m = this.missions[missionId];
+    if (m) { m.updatedAt = Date.now(); this.persistMission(m); }
   }
 
   getEvidence(missionId: string): TimelineEntry[] {
@@ -413,6 +513,7 @@ class MissionKernel {
     };
 
     mission.context.goals.push(goal);
+    this.persistMission(mission);
     recordTimelineEntry({
       missionId,
       type: "plan_step",
@@ -430,6 +531,7 @@ class MissionKernel {
     if (!goal) return false;
 
     Object.assign(goal, update);
+    this.persistMission(mission);
 
     if (update.status === "completed") {
       // Recalculate progress
@@ -497,6 +599,35 @@ class MissionKernel {
     });
   }
 
+  // ── DASHBOARD ────────────────────────────────────────
+
+  getDashboard(): {
+    missions: ReturnType<MissionKernel["getStats"]>;
+    activeMissions: { id: string; name: string; state: MissionState; progress: number; toolCalls: number; recoveryCount: number }[];
+    recentTimeline: TimelineEntry[];
+    checkpointHealth: { total: number; corrupted: number };
+  } {
+    const active = Object.values(this.missions)
+      .filter(m => isActiveState(m.state) || m.state === "failed" || m.state === "recovering")
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 20)
+      .map(m => ({
+        id: m.id, name: m.name, state: m.state,
+        progress: m.progress, toolCalls: m.toolCallsTotal,
+        recoveryCount: m.recoveryCount,
+      }));
+
+    return {
+      missions: this.getStats(),
+      activeMissions: active,
+      recentTimeline: getTimeline("", 20).slice(0, 20) as TimelineEntry[],
+      checkpointHealth: {
+        total: require("./checkpoint").getCheckpoints("", 1000).length,
+        corrupted: 0,
+      },
+    };
+  }
+
   // ── STATS ────────────────────────────────────────────
 
   updateStats(missionId: string, stats: { toolCalls?: number; tokens?: number; cost?: number }): void {
@@ -507,6 +638,7 @@ class MissionKernel {
     if (stats.tokens) mission.tokensUsed += stats.tokens;
     if (stats.cost) mission.costDollars += stats.cost;
     mission.updatedAt = Date.now();
+    this.persistMission(mission);
   }
 
   getStats(): {
