@@ -13,7 +13,7 @@ module.exports = {
     max_restarts: 10,
     restart_delay: 3000,
     // Keep logs trimmed
-    max_memory_restart: '500M',
+    max_memory_restart: '2G',
     // Ensure clean state on crash restart
     kill_timeout: 5000,
     wait_ready: true,

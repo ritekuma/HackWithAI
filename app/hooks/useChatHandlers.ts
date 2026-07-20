@@ -823,9 +823,9 @@ export const useChatHandlers = ({
           state: p.state,
         })) || [];
 
-      const completedTools = toolCalls.filter(t => t.state === "output-available").length;
-      const pendingTools = toolCalls.filter(t => t.state !== "output-available").length;
-      const currentTool = toolCalls.find(t => t.state !== "output-available");
+      const completedTools = toolCalls.filter((t: any) => t.state === "output-available").length;
+      const pendingTools = toolCalls.filter((t: any) => t.state !== "output-available").length;
+      const currentTool = toolCalls.find((t: any) => t.state !== "output-available");
 
       const textParts = (lastAssistant as any)?.parts
         ?.filter((p: any) => p.type === "text")
