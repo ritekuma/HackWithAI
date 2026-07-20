@@ -14,13 +14,10 @@ jobs:
     timeout-minutes: 4320
     steps:
       - uses: actions/checkout@v6
-      - run: sudo apt-get update && sudo apt-get install -y build-essential python3
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with: { node-version: '20.x', cache: 'pnpm' }
       - run: pnpm install --no-frozen-lockfile
-        env:
-          npm_config_build_from_source: true
       - run: npx tsx scripts/validation/soak.ts ${{ github.event.inputs.duration || '1' }} --output data/soak-report.json
       - uses: actions/upload-artifact@v4
         with:
