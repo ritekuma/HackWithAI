@@ -18,6 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20.x', cache: 'pnpm' }
       - run: pnpm install --no-frozen-lockfile
+      - run: pnpm rebuild better-sqlite3
       - run: npx tsx scripts/validation/soak.ts ${{ github.event.inputs.duration || '1' }} --output data/soak-report.json
       - uses: actions/upload-artifact@v4
         with:
